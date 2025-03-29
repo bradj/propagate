@@ -1,0 +1,8 @@
+.venv
+.envrc
+eo/
+__pycache__/
+.DS_Store
+.vscode/
+web/dist
+web/node_modules
