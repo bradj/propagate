@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import List
 from executive_order import ExecutiveOrder
 from summarize_eo import process_pdf
-
+import traceback
 class FederalRegisterClient:
     """Client for interacting with the Federal Register API."""
 
@@ -143,6 +143,7 @@ def main():
             process_pdf(order)
     except Exception as e:
         print(f"Error processing PDF: {e}")
+        traceback.print_exc()
 
 
 if __name__ == "__main__":

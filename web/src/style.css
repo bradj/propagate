@@ -1,1 +1,13 @@
 @import "tailwindcss";
+
+a {
+  @apply text-blue-500;
+}
+
+a:hover {
+  @apply text-blue-600;
+}
+
+#eos > div > div:nth-child(2) > div:nth-child(even) {
+  @apply text-right;
+}

@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
 from executive_order import ExecutiveOrder
-from summary import Summary
+from summary import Summary, Categories
+from util import convert_to_json, get_claude_json_path, get_summary_path
 import os
 import json
 import base64
@@ -9,7 +10,6 @@ from pathlib import Path
 from typing import Optional
 import anthropic
 import sys
-
 
 MODEL: str = os.environ.get("PROPAGATE_MODEL")
 PDF_DIR: Path = Path(os.environ.get("PROPAGATE_PDF_DIR"))
@@ -30,6 +30,12 @@ def get_client():
     return client
 
 
+def save_claude_json(json_data: dict, json_path: Path) -> Path:
+    with open(json_path, "w") as f:
+        json.dump(json_data, f, indent=2)
+    return json_path
+
+
 def summarize_with_claude(order: ExecutiveOrder) -> Summary:
     """
     Send PDF file to Claude API for summarization.
@@ -41,7 +47,7 @@ def summarize_with_claude(order: ExecutiveOrder) -> Summary:
         Dictionary with summary and metadata
     """
     
-    prompt = f"""The response should be a valid JSON object with the following fields. There should be no other text in the response. Do not include ```json or ``` in the response:
+    prompt = f"""The response should be a valid JSON object with the following fields. Escape all quotes in the response. Validate it's a valid JSON object. There should be no other text in the response. Do not include ```json or ``` in the response:
     - summary: Create summary with {MAX_SUMMARY_LENGTH} characters or less
     - purpose: What is the stated purpose of the Executive Order?
     - effective_date: What is the stated effective date of the Executive Order?
@@ -52,6 +58,17 @@ def summarize_with_claude(order: ExecutiveOrder) -> Summary:
     - positive_impacts: What are the potential positive impacts of the Executive Order?
     - negative_impacts: What are the potential negative impacts of the Executive Order?
     - key_industries: What industries are most likely to be impacted by the Executive Order?
+    - categories: Qualify the executive order picking a value for each of the following categories:
+        - policy_domain: Economic, Defense, Healthcare, Education, Environmental, Immigration, Energy, Transportation, Civil Rights, Foreign Relations
+        - regulatory_impact: Deregulatory, Regulatory, Guidance-oriented, Agency reorganization
+        - constitutional_authority: National security powers, Emergency powers, Administrative powers, Treaty implementation
+        - duration: Temporary/time-limited, Permanent, Contingent on specific conditions
+        - scope_of_impact: Federal agencies only, State/local government coordinination, Private sector involvement, Individual rights
+        - political_context: Campaign promise fulfillment, Response to crisis, Reversal of predecessor's policy, Congressional gridlock workaround
+        - legal_framework: Statutory interpretation, Constitutional interpretation, International law implementation, Agency rulemaking direction
+        - budgetary_implications: Budget neutral, Requires new appropriations, Reallocates existing funds, Cost-saving measures
+        - implementation_timeline: Immediate effect, Phased implementation, Delayed effective date, Contingent implementation
+        - precedential_value: Novel/first-of-its-kind, Consistent with historical practice, Expansion of existing policy, Restatement of existing authority
     """
 
     pdf_data = None
@@ -96,6 +113,23 @@ def summarize_with_claude(order: ExecutiveOrder) -> Summary:
     summary = message.content[0].text
     print(summary)
     summary_json = json.loads(summary)
+    save_claude_json(summary_json, get_claude_json_path(order))
+
+    return summary_json
+
+def claude_json_to_summary(summary_json: dict, order: ExecutiveOrder) -> Summary:
+    categories = Categories(
+        policy_domain=summary_json["categories"]["policy_domain"],
+        regulatory_impact=summary_json["categories"]["regulatory_impact"],
+        constitutional_authority=summary_json["categories"]["constitutional_authority"],
+        duration=summary_json["categories"]["duration"],
+        scope_of_impact=summary_json["categories"]["scope_of_impact"],
+        political_context=summary_json["categories"]["political_context"],
+        legal_framework=summary_json["categories"]["legal_framework"],
+        budgetary_implications=summary_json["categories"]["budgetary_implications"],
+        implementation_timeline=summary_json["categories"]["implementation_timeline"],
+        precedential_value=summary_json["categories"]["precedential_value"],
+    )
     
     return Summary(
         title=order.title,
@@ -111,10 +145,13 @@ def summarize_with_claude(order: ExecutiveOrder) -> Summary:
         signing_date=order.signing_date,
         original_url=order.html_url,
         eo_number=int(order.executive_order_number),
+        positive_impacts=summary_json["positive_impacts"],
+        negative_impacts=summary_json["negative_impacts"],
+        key_industries=summary_json["key_industries"],
+        categories=categories,
     )
 
-
-def save_summary(summary: Summary, json_path: Path) -> Path:
+def save_summary(summary: Summary, summary_path: Path) -> Path:
     """
     Save the summary to a JSON file.
     
@@ -125,52 +162,37 @@ def save_summary(summary: Summary, json_path: Path) -> Path:
     Returns:
         Path to the saved summary file
     """
-    summary_file = json_path
+    with open(summary_path, "w") as f:
+        json.dump(summary, f, indent=2, default=convert_to_json)
     
-    with open(summary_file, "w") as f:
-        json.dump(
-            {
-                "deeper_dive": summary.deeper_dive,
-                "economic_effects": summary.economic_effects,
-                "effective_date": summary.effective_date,
-                "expiration_date": summary.expiration_date,
-                "geopolitical_effects": summary.geopolitical_effects,
-                "pdf_file": str(summary.pdf_path),
-                "publication_date": summary.publication_date,
-                "purpose": summary.purpose,
-                "signing_date": summary.signing_date,
-                "summary": summary.summary,
-                "timestamp": str(os.path.getmtime(summary.pdf_path)),
-                "title": summary.title,
-            },
-            f,
-            indent=2
-        )
-    
-    return summary_file
+    return summary_path
 
-def process_pdf(order: ExecutiveOrder, force: bool = False) -> Optional[Summary]:
-    summary_file = SUMMARIES_DIR / f"{order.pdf_path}.json"
-    
-    # Skip if summary exists and force is False
-    if summary_file.exists() and not force:
-        print(f"Summary for {order.pdf_path} already exists. Skipping.")
-        return None
+def process_pdf(order: ExecutiveOrder) -> Optional[Summary]:
+    summary_path = get_summary_path(order)
     
     print(f"Processing {order.pdf_path}...")
-    
-    # Summarize with Claude using the PDF file directly
-    summary_data = summarize_with_claude(order)
+
+    # if claude json exists, use the claude json
+    claude_json_path = get_claude_json_path(order)
+    summary_data = None
+    if claude_json_path.exists():
+        with open(claude_json_path, "r") as f:
+            summary_data = json.load(f)
+    else:
+        # Summarize with Claude using the PDF file directly
+        summary_data = summarize_with_claude(order)
 
     if summary_data is None:
         print(f"Error summarizing {order.pdf_path}")
         return None
     
+    summary = claude_json_to_summary(summary_data, order)
+    
     # Save summary
-    saved_path = save_summary(summary_data, f'{SUMMARIES_DIR}/EO-{order.executive_order_number}.json')
+    saved_path = save_summary(summary, summary_path)
     print(f"  Summary saved to {saved_path}")
     
-    return summary_data
+    return summary
 
 
 def main():
