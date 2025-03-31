@@ -50,7 +50,7 @@ def download_pdf(
     response.raise_for_status()
 
     with open(filepath, "wb") as f:
-        for chunk in response.iter_content(chunk_size=self.CHUNK_SIZE):
+        for chunk in response.iter_content(chunk_size=CHUNK_SIZE):
             f.write(chunk)
 
     return filepath

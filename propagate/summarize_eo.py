@@ -94,7 +94,6 @@ def summarize_with_claude(order: ExecutiveOrder) -> Summary:
         sys.exit(1)
     
     summary = message.content[0].text
-    print(summary)
     summary_json = json.loads(summary)
     save_claude_json(summary_json, get_claude_json_path(order))
 
