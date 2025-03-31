@@ -1,33 +1,16 @@
 #!/usr/bin/env python3
 
+from config import MODEL, PDF_DIR, SUMMARIES_DIR, MAX_SUMMARY_LENGTH
 from executive_order import ExecutiveOrder
-from summary import Summary, Categories
-from util import convert_to_json, get_claude_json_path, get_summary_path
-import os
-import json
-import base64
 from pathlib import Path
+from summary import Summary, Categories
 from typing import Optional
+from util import convert_to_json, get_claude_json_path, get_summary_path
+from util import get_client
 import anthropic
+import base64
+import json
 import sys
-
-MODEL: str = os.environ.get("PROPAGATE_MODEL")
-PDF_DIR: Path = Path(os.environ.get("PROPAGATE_PDF_DIR"))
-SUMMARIES_DIR: Path = Path(os.environ.get("PROPAGATE_SUMMARIES_DIR"))
-api_key: str | None = os.environ.get("PROPAGATE_ANTHROPIC_API_KEY")
-MAX_SUMMARY_LENGTH: int = 250
-client: anthropic.Anthropic | None = None
-
-def get_client():
-    global client
-    
-    if not api_key:
-        print("Claude API key is required. Set the ANTHROPIC_API_KEY environment variable.")
-        sys.exit(1)
-    
-    if client is None:
-        client = anthropic.Anthropic(api_key=api_key)
-    return client
 
 
 def save_claude_json(json_data: dict, json_path: Path) -> Path:

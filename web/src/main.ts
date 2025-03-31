@@ -132,11 +132,16 @@ function createEoHeader(eo: Eo) {
     class: "flex flex-col w-5/6 md:w-1/4 m-auto mb-10 md:m-0 gap-2",
   })
 
+  const anchor = el("a", {
+    href: `#eo-${eo.eo_number}`,
+  })
   const title = el("h1", {
+    id: `eo-${eo.eo_number}`,
     class: "text-2xl font-bold w-auto text-slate-700",
   })
   title.textContent = eo.title
-  header.appendChild(title)
+  anchor.appendChild(title)
+  header.appendChild(anchor)
 
   const subtitle = el("p", {
     class: "text-sm text-slate-600",

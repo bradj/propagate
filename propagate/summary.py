@@ -16,20 +16,20 @@ class Categories:
 
 @dataclass
 class Summary:
-    title: str
-    summary: str
-    purpose: str
-    effective_date: str
-    expiration_date: str
-    economic_effects: str
-    geopolitical_effects: str
-    deeper_dive: str
-    pdf_path: Path
-    publication_date: str
-    signing_date: str
-    original_url: str
-    eo_number: int
-    positive_impacts: str
-    negative_impacts: str
-    key_industries: str
     categories: Categories
+    deeper_dive: str
+    economic_effects: str
+    effective_date: str
+    eo_number: int
+    expiration_date: str
+    geopolitical_effects: str
+    key_industries: str
+    negative_impacts: str
+    original_url: str
+    pdf_path: Path
+    positive_impacts: str
+    publication_date: str
+    purpose: str
+    signing_date: str
+    summary: str
+    title: str
