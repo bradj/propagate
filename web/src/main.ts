@@ -1,7 +1,9 @@
 import "./style.css";
+import Fuse from 'fuse.js';
 
 let eos: Eo[] = []
 let buildTime: string = ''
+let fuse: Fuse<Eo> | null = null
 
 type Eo = {
   deeper_dive: string;
@@ -252,17 +254,65 @@ function buildEoList(eos: Eo[]) {
   }
 }
 
+function initializeFuse() {
+  const options = {
+    keys: [
+      'title',
+      'summary', 
+      'purpose',
+      'deeper_dive',
+      'economic_effects',
+      'geopolitical_effects',
+      'positive_impacts',
+      'negative_impacts',
+      'key_industries',
+      'categories.policy_domain',
+      'categories.regulatory_impact',
+      'categories.constitutional_authority',
+      'categories.political_context'
+    ],
+    threshold: 0.4,
+    includeScore: true
+  }
+  fuse = new Fuse(eos, options)
+}
+
+function handleSearch(query: string) {
+  const searchResults = document.getElementById('search-results')
+  if (!fuse || !searchResults) return
+  
+  if (!query.trim()) {
+    buildEoList(eos)
+    searchResults.textContent = ''
+    return
+  }
+  
+  const results = fuse.search(query)
+  const filteredEos = results.map(result => result.item)
+  
+  buildEoList(filteredEos)
+  searchResults.textContent = `Found ${results.length} result${results.length !== 1 ? 's' : ''} for "${query}"`
+}
+
+function setupSearchInput() {
+  const searchInput = document.getElementById('search-input') as HTMLInputElement
+  if (!searchInput) return
+  
+  searchInput.addEventListener('input', (e) => {
+    const query = (e.target as HTMLInputElement).value
+    handleSearch(query)
+  })
+}
+
 async function main() {
   await getEos()
-  // const count = document.getElementById("count")
-  // if (!count) return
-
-  // count.innerText = eos.length.toString()
+  initializeFuse()
   buildEoList(eos)
-  // industrySelectHandler()
+  setupSearchInput()
+  
   const buildTimeEl = document.getElementById("build-time")
   if (buildTimeEl) {
-    buildTimeEl.innerText = new Date(buildTime).toLocaleString() // convert to local time
+    buildTimeEl.innerText = new Date(buildTime).toLocaleString()
   }
 }
 
