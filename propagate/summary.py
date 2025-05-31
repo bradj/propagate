@@ -1,6 +1,7 @@
 from pathlib import Path
 from dataclasses import dataclass
 
+
 @dataclass
 class Categories:
     policy_domain: str
@@ -13,6 +14,7 @@ class Categories:
     budgetary_implications: str
     implementation_timeline: str
     precedential_value: str
+
 
 @dataclass
 class Summary:

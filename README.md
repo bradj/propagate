@@ -13,13 +13,6 @@ Propagate is a Python-based utility that enables users to:
 
 The project handles pagination, duplicate downloads, and provides simple status updates as it processes Executive Orders.
 
-## Intent
-
-This project was developed to simplify the process of collecting and understanding Executive Orders. By automating the fetching, storage, and summarization processes, Propagate reduces the time needed to track and analyze government actions. It's designed to be:
-
-- Efficient: Only downloads new PDFs, follows pagination automatically
-- Accessible: Provides brief summaries that capture the essence of lengthy documents
-
 ## Getting Started
 
 ### Prerequisites
@@ -30,20 +23,35 @@ This project was developed to simplify the process of collecting and understandi
 ### Installation
 
 1. Clone the repository:
+
    ```bash
    git clone https://github.com/username/propagate.git
    cd propagate
    ```
 
 2. Create and activate a virtual environment:
+
    ```bash
    python -m venv .venv
    source .venv/bin/activate  # On Windows: .venv\Scripts\activate
    ```
 
 3. Install dependencies:
+
    ```bash
    pip install -r requirements.txt
+   ```
+
+4. Get PDF's and process them
+
+   ```bash
+   python propagate/federal_register.py
+   ```
+
+5. Build & Run Website
+
+   ```bash
+   make web
    ```
 
 ### Usage
@@ -56,35 +64,6 @@ export PROPAGATE_SUMMARIES_DIR="eo/"
 export PROPAGATE_PDF_DIR="eo/pdf"
 export PROPAGATE_MODEL="claude-3-7-sonnet-20250219"
 ```
-
-#### Fetching and Downloading Executive Orders
-
-To download Executive Orders from the Federal Register:
-
-```bash
-python federal_register.py
-```
-
-This will:
-- Fetch all Executive Orders, following pagination
-- Download PDFs to the `eo/pdf` directory
-- Skip PDFs that have already been downloaded
-
-#### Generating Summaries
-
-To create summaries for all downloaded Executive Orders:
-
-1. Set your Anthropic API key:
-   ```bash
-   export ANTHROPIC_API_KEY=your_api_key_here
-   ```
-
-2. Run the summarization script:
-   ```bash
-   python summarize_eo.py
-   ```
-
-Summaries will be saved as JSON files in the `eo/summaries` directory.
 
 ## Project Structure
 

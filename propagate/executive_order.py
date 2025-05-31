@@ -5,6 +5,7 @@ from typing import Optional, Dict, Any
 @dataclass
 class ExecutiveOrder:
     """Represents an Executive Order from the Federal Register."""
+
     citation: Optional[str] = None
     document_number: Optional[str] = None
     end_page: Optional[int] = None
@@ -25,7 +26,7 @@ class ExecutiveOrder:
     json_url: Optional[str] = None
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'ExecutiveOrder':
+    def from_dict(cls, data: Dict[str, Any]) -> "ExecutiveOrder":
         """Create an ExecutiveOrder instance from a dictionary."""
         # Convert string dates to date objects if present
         # for date_field in ['publication_date', 'signing_date']:
@@ -35,14 +36,14 @@ class ExecutiveOrder:
         #             data[date_field] = date.fromisoformat(data[date_field])
         #         except (ValueError, TypeError):
         #             pass
-        
+
         # Convert string numbers to integers if present
-        for int_field in ['end_page', 'start_page', 'executive_order_number']:
+        for int_field in ["end_page", "start_page", "executive_order_number"]:
             if data.get(int_field) and isinstance(data[int_field], str):
                 try:
                     data[int_field] = int(data[int_field])
                 except (ValueError, TypeError):
                     pass
-        
+
         # Initialize with the matched fields, ignoring extra fields
         return cls(**{k: v for k, v in data.items() if k in cls.__annotations__})

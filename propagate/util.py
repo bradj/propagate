@@ -14,28 +14,30 @@ BASE_URL = "https://www.federalregister.gov/api/v1/documents.json"
 
 client: anthropic.Anthropic | None = None
 
+
 def get_client():
     global client
-    
+
     if not CLAUDE_API_KEY:
-        print("Claude API key is required. Set the ANTHROPIC_API_KEY environment variable.")
+        print(
+            "Claude API key is required. Set the ANTHROPIC_API_KEY environment variable."
+        )
         sys.exit(1)
-    
+
     if client is None:
         client = anthropic.Anthropic(api_key=CLAUDE_API_KEY)
     return client
 
+
 def convert_to_json(obj):
     if isinstance(obj, set):
         return list(obj)
-    if hasattr(obj, '__dict__'):
+    if hasattr(obj, "__dict__"):
         return obj.__dict__
     return str(obj)
 
 
-def download_pdf(
-        order: ExecutiveOrder, force: bool = False
-    ) -> Path:
+def download_pdf(order: ExecutiveOrder, force: bool = False) -> Path:
     if not order.pdf_url:
         raise ValueError("No PDF URL available")
 
@@ -55,9 +57,10 @@ def download_pdf(
 
     return filepath
 
+
 def download_all_pdfs(
-        orders: List[ExecutiveOrder], force: bool = False
-    ) -> list[ExecutiveOrder]:
+    orders: List[ExecutiveOrder], force: bool = False
+) -> list[ExecutiveOrder]:
     success_orders = []
     for order in orders:
         pdf_path = download_pdf(order, force)
@@ -69,10 +72,11 @@ def download_all_pdfs(
 
     return success_orders
 
+
 def fetch_all_executive_orders(
     president: str = "donald-trump",
     start_date: str = "01/20/2025",
-    end_date: str = "03/29/2025",
+    end_date: str = "05/31/2025",
     per_page: int = 1000,
 ) -> List[ExecutiveOrder]:
     params = {
@@ -144,13 +148,23 @@ def fetch_all_executive_orders(
 
 
 def get_claude_json_path(order: ExecutiveOrder) -> Path:
-    return Path(f'{SUMMARIES_DIR}/EO-{order.executive_order_number}-claude.json')
+    return Path(f"{SUMMARIES_DIR}/EO-{order.executive_order_number}-claude.json")
+
 
 def get_summary_path(order: ExecutiveOrder) -> Path:
-    return Path(f'{SUMMARIES_DIR}/EO-{order.executive_order_number}.json')
+    return Path(f"{SUMMARIES_DIR}/EO-{order.executive_order_number}.json")
+
 
 def get_summary_path_eo(eo_number: str) -> Path:
-    return Path(f'{SUMMARIES_DIR}/EO-{eo_number}.json')
+    return Path(f"{SUMMARIES_DIR}/EO-{eo_number}.json")
+
+
+"""
+This is the function that gets the summaries for all the executive orders.
+It fetches all the executive orders from the Federal Register and then gets the summaries for each of them.
+It then returns a list of Summary objects. It will only return summaries that already exist.
+"""
+
 
 def get_summaries() -> list[Summary]:
     eos = fetch_all_executive_orders()
@@ -159,8 +173,8 @@ def get_summaries() -> list[Summary]:
         summary_path = get_summary_path(eo)
         if not summary_path.exists():
             continue
-        
-        with open(summary_path, 'r') as f:
+
+        with open(summary_path, "r") as f:
             summary = json.load(f)
             summaries.append(Summary(**summary))
 

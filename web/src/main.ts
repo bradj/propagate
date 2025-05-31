@@ -1,5 +1,8 @@
 import "./style.css";
 
+let eos: Eo[] = []
+let buildTime: string = ''
+
 type Eo = {
   deeper_dive: string;
   economic_effects: string
@@ -14,6 +17,7 @@ type Eo = {
   timestamp: string
   title: string
   eo_number: number
+  key_industries: string[]
 }
 
 const metaList = [
@@ -220,9 +224,22 @@ function createEoDetails(eo: Eo) {
   return details
 }
 
-async function main() {
-  const eos = await fetch("/eo.json").then((res) => res.json())
+async function getEos() {
+  if (eos.length > 0) {
+    return { eos, buildTime }
+  }
+  const eoJson = await fetch("/eo.json").then((res) => res.json())
+  eos = eoJson.eos
+  buildTime = eoJson.build_time
+  return { eos, buildTime }
+}
+
+function buildEoList(eos: Eo[]) {
   const eosEl = document.getElementById("eos")
+  if (!eosEl) {
+    return
+  }
+  eosEl.innerHTML = ""
   
   for (const eo of eos) {
     const eoEl = el("div", { class: "flex flex-col md:flex-row" })
@@ -232,6 +249,20 @@ async function main() {
     eoEl.appendChild(createEoDetails(eo))
   
     eosEl?.appendChild(eoEl)
+  }
+}
+
+async function main() {
+  await getEos()
+  // const count = document.getElementById("count")
+  // if (!count) return
+
+  // count.innerText = eos.length.toString()
+  buildEoList(eos)
+  // industrySelectHandler()
+  const buildTimeEl = document.getElementById("build-time")
+  if (buildTimeEl) {
+    buildTimeEl.innerText = new Date(buildTime).toLocaleString() // convert to local time
   }
 }
 

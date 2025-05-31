@@ -3,12 +3,15 @@ from pathlib import Path
 import os
 from datetime import datetime
 from pprint import pprint
+
+
 class DateTimeEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, datetime):
             # format to YYYY-MM-DD
             return obj.strftime("%Y-%m-%d")
         return super().default(obj)
+
 
 def main():
     eo_dir = Path(os.getenv("PROPAGATE_SUMMARIES_DIR"))
@@ -29,23 +32,33 @@ def main():
     # effective_date, publication_date, signing_date
     for eo in eo_data:
         try:
-            if '12:01' in eo["effective_date"]:
+            if "12:01" in eo["effective_date"]:
                 splits = eo["effective_date"].split(",")
                 eo["effective_date"] = splits[0].strip() + ", " + splits[1].strip()
-                eo["effective_date"] = datetime.strptime(eo["effective_date"], "%B %d, %Y")
+                eo["effective_date"] = datetime.strptime(
+                    eo["effective_date"], "%B %d, %Y"
+                )
             else:
-                eo["effective_date"] = datetime.strptime(eo["effective_date"], "%B %d, %Y")
+                eo["effective_date"] = datetime.strptime(
+                    eo["effective_date"], "%B %d, %Y"
+                )
         except:
             pass
 
-        no_specified_date_strings = ["No expiration date specified", "Not specified", "No expiration date is stated"]
+        no_specified_date_strings = [
+            "No expiration date specified",
+            "Not specified",
+            "No expiration date is stated",
+        ]
 
         # find one of these strings in expiration_date
         if any(s in eo["expiration_date"] for s in no_specified_date_strings):
             eo["expiration_date"] = "No expiration date stated"
         else:
             try:
-                eo["expiration_date"] = datetime.strptime(eo["expiration_date"], "%Y-%m-%d")
+                eo["expiration_date"] = datetime.strptime(
+                    eo["expiration_date"], "%Y-%m-%d"
+                )
             except:
                 # leave as is
                 pass
@@ -55,11 +68,13 @@ def main():
         # timestamp is a float in seconds since epoch
         eo["timestamp"] = datetime.fromtimestamp(float(eo["timestamp"]))
 
-    # order by publication date descending
-    eo_data.sort(key=lambda x: x["publication_date"], reverse=True)
+    # order by executive order number descending
+    eo_data.sort(key=lambda x: x["eo_number"], reverse=True)
+
+    eo_json = {"eos": eo_data, "build_time": datetime.now().isoformat()}
 
     with open("eo/eo.json", "w") as f:
-        json.dump(eo_data, f, cls=DateTimeEncoder)
+        json.dump(eo_json, f, cls=DateTimeEncoder)
 
 
 if __name__ == "__main__":
