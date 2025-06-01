@@ -69,7 +69,8 @@ export PROPAGATE_MODEL="claude-3-7-sonnet-20250219"
 
 - `main.py`: Handles API requests to the Federal Register and PDF downloads
 - `models.py`: Data models for Executive Orders and AI-generated summaries
-- `summarize_eo.py`: Processes PDFs with Claude AI to generate summaries
+- `summarize_eo.py`: Processes PDFs with Claude AI to generate summaries; supports direct execution with EO numbers
+- `prompts.py`: Contains Claude AI prompts used for generating executive order summaries
 - `eo/pdf/`: Directory containing downloaded Executive Order PDFs
 - `eo/`: Directory containing JSON summaries of Executive Orders
 - `web/`: TypeScript web frontend with search functionality powered by fuse.js

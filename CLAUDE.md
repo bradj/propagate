@@ -13,9 +13,10 @@ Propagate is a Python-based tool with a TypeScript web frontend that fetches, do
 ### Core Components
 
 - `main.py`: Fetches Executive Orders from Federal Register API and downloads PDFs
-- `summarize_eo.py`: Processes PDFs with Claude AI to generate structured summaries with categorization
+- `summarize_eo.py`: Processes PDFs with Claude AI to generate structured summaries with categorization; can be called directly with an executive order number
 - `build.py`: Aggregates individual JSON summaries into a single `eo.json` file with date processing
 - `models.py`: Data models for Executive Orders and their AI-generated summaries
+- `prompts.py`: Contains Claude AI prompts used for generating executive order summaries
 - `util.py`: Shared utilities for API clients, file paths, and data conversion
 
 ### Data Flow
@@ -38,9 +39,10 @@ cd web && npm run build       # Build TypeScript frontend
 ### Data Processing
 
 ```bash
-make run                         # Fetch EOs and download PDFs
-python propagate/main.py         # Fetch EOs and download PDFs (direct)
-python propagate/summarize_eo.py # Generate AI summaries for PDFs
+make run                              # Fetch EOs and download PDFs
+python propagate/main.py              # Fetch EOs and download PDFs (direct)
+python propagate/summarize_eo.py      # Generate AI summaries for all PDFs
+python propagate/summarize_eo.py 14303 # Generate AI summary for specific EO number
 ```
 
 ### Web Development

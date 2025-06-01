@@ -1,10 +1,17 @@
 #!/usr/bin/env python3
 
-from config import MODEL, MAX_SUMMARY_LENGTH, SUMMARIES_DIR
+from config import MODEL, SUMMARIES_DIR
+from prompts import PROMPT, SYSTEM_PROMPT
 from pathlib import Path
 from models import ExecutiveOrder, Summary, Categories
 from typing import Optional
-from util import convert_to_json, get_claude_json_path, get_summary_path
+from util import (
+    convert_to_json,
+    get_claude_json_path,
+    get_summary_path,
+    get_summary_path_eo,
+    fetch_all_executive_orders,
+)
 from util import get_client
 import anthropic
 import base64
@@ -29,40 +36,6 @@ def summarize_with_claude(order: ExecutiveOrder) -> Summary:
         Dictionary with summary and metadata
     """
 
-    prompt = f"""The response should be a valid JSON object with the following fields. Escape all quotes in the response. Validate it's a valid JSON object. There should be no other text in the response. Do not include ```json or ``` in the response:
-    - summary: Create summary with {MAX_SUMMARY_LENGTH} characters or less
-    - purpose: What is the stated purpose of the Executive Order?
-    - effective_date: What is the stated effective date of the Executive Order?
-    - expiration_date: What is the stated expiration date of the Executive Order?
-    - economic_effects: Highlight potential economic effects
-    - geopolitical_effects: Highlight potential geopolitical effects
-    - deeper_dive: A deeper dive into what the Executive Order does and broader effects
-    - positive_impacts: What are the potential positive impacts of the Executive Order?
-    - negative_impacts: What are the potential negative impacts of the Executive Order?
-    - key_industries: What industries are most likely to be impacted by the Executive Order? Only select from the following list of industries:
-        - Government & Public Administration
-        - Defense & National Security
-        - Technology & Cybersecurity
-        - Financial Services
-        - Healthcare & Pharmaceuticals
-        - Energy & Utilities
-        - Manufacturing & Industry
-        - Education & Research
-        - Legal Services & Compliance
-        - Agriculture & Natural Resources
-    - categories: Qualify the executive order picking a value for each of the following categories:
-        - policy_domain: Economic, Defense, Healthcare, Education, Environmental, Immigration, Energy, Transportation, Civil Rights, Foreign Relations
-        - regulatory_impact: Deregulatory, Regulatory, Guidance-oriented, Agency reorganization
-        - constitutional_authority: National security powers, Emergency powers, Administrative powers, Treaty implementation
-        - duration: Temporary/time-limited, Permanent, Contingent on specific conditions
-        - scope_of_impact: Federal agencies only, State/local government coordinination, Private sector involvement, Individual rights
-        - political_context: Campaign promise fulfillment, Response to crisis, Reversal of predecessor's policy, Congressional gridlock workaround
-        - legal_framework: Statutory interpretation, Constitutional interpretation, International law implementation, Agency rulemaking direction
-        - budgetary_implications: Budget neutral, Requires new appropriations, Reallocates existing funds, Cost-saving measures
-        - implementation_timeline: Immediate effect, Phased implementation, Delayed effective date, Contingent implementation
-        - precedential_value: Novel/first-of-its-kind, Consistent with historical practice, Expansion of existing policy, Restatement of existing authority
-    """
-
     pdf_data = None
     try:
         with open(order.pdf_path, "rb") as f:
@@ -76,13 +49,13 @@ def summarize_with_claude(order: ExecutiveOrder) -> Summary:
         # Create message with PDF attachment using file path
         message = get_client().messages.create(
             model=MODEL,
-            max_tokens=1024,
-            system="You are a helpful assistant that summarizes executive orders concisely.",
+            max_tokens=16000,
+            system=SYSTEM_PROMPT,
             messages=[
                 {
                     "role": "user",
                     "content": [
-                        {"type": "text", "text": prompt},
+                        {"type": "text", "text": PROMPT},
                         {
                             "type": "document",
                             "source": {
@@ -158,26 +131,18 @@ def save_summary(summary: Summary, summary_path: Path) -> Path:
     return summary_path
 
 
-def process_pdf(order: ExecutiveOrder) -> Optional[Summary]:
+def process_pdf(order: ExecutiveOrder, force: bool = False) -> Optional[Summary]:
     summary_path = get_summary_path(order)
 
     # Skip if summary already exists
-    if summary_path.exists():
+    if summary_path.exists() and not force:
         print(f"Summary already exists for {order.pdf_path}, skipping...")
         return None
 
     print(f"Processing {order.pdf_path}...")
 
-    # if claude json exists, use the claude json
-    claude_json_path = get_claude_json_path(order)
-    summary_data = None
-    if claude_json_path.exists():
-        with open(claude_json_path, "r") as f:
-            summary_data = json.load(f)
-    else:
-        # Summarize with Claude using the PDF file directly
-        summary_data = summarize_with_claude(order)
-
+    # Summarize with Claude using the PDF file directly
+    summary_data = summarize_with_claude(order)
     if summary_data is None:
         print(f"Error summarizing {order.pdf_path}")
         return None
@@ -192,30 +157,20 @@ def process_pdf(order: ExecutiveOrder) -> Optional[Summary]:
 
 
 def main():
-    """Main function to summarize Executive Order PDFs."""
-    from util import fetch_all_executive_orders
+    """Summarizes the EO based on the executive order number"""
+    if len(sys.argv) != 2:
+        print("Usage: python summarize_eo.py <eo_number>")
+        sys.exit(1)
 
-    # Get API key from environment variable
-    SUMMARIES_DIR.mkdir(parents=True, exist_ok=True)
+    eo_number = int(sys.argv[1])
 
-    # Fetch all executive orders (this will also download PDFs if needed)
-    print("Fetching Executive Orders...")
     orders = fetch_all_executive_orders()
-
-    # Process all orders for summarization
-    print("Starting to summarize Executive Order PDFs...")
-    processed_count = 0
-    skipped_count = 0
-
     for order in orders:
-        result = process_pdf(order)
-        if result is None:
-            skipped_count += 1
-        else:
-            processed_count += 1
+        if order.executive_order_number == eo_number:
+            process_pdf(order, force=True)
+            break
 
-    print(f"\nCompleted! Processed: {processed_count}, Skipped: {skipped_count}")
-    print("Summaries are saved in the summaries directory.")
+    print(f"Summarized {eo_number}")
 
 
 if __name__ == "__main__":
