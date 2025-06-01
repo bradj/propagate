@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from config import MODEL, SUMMARIES_DIR
+from config import MODEL, MAX_TOKENS
 from prompts import PROMPT, SYSTEM_PROMPT
 from pathlib import Path
 from models import ExecutiveOrder, Summary, Categories
@@ -9,14 +9,18 @@ from util import (
     convert_to_json,
     get_claude_json_path,
     get_summary_path,
-    get_summary_path_eo,
     fetch_all_executive_orders,
+    get_pdf_data,
 )
 from util import get_client
 import anthropic
-import base64
+from anthropic.types.messages.message_batch import MessageBatch
+from anthropic.types.messages.batch_create_params import Request
+from anthropic.types.message_create_params import MessageCreateParamsNonStreaming
+from anthropic.types.message import Message
 import json
 import sys
+import uuid
 
 
 def save_claude_json(json_data: dict, json_path: Path) -> Path:
@@ -25,31 +29,18 @@ def save_claude_json(json_data: dict, json_path: Path) -> Path:
     return json_path
 
 
-def summarize_with_claude(order: ExecutiveOrder) -> Summary:
+def create_claude_message(order: ExecutiveOrder) -> Message:
     """
-    Send PDF file to Claude API for summarization.
-
-    Args:
-        pdf_path: Path to the PDF file
-
-    Returns:
-        Dictionary with summary and metadata
+    Create a Claude message for a given executive order.
     """
-
-    pdf_data = None
-    try:
-        with open(order.pdf_path, "rb") as f:
-            pdf_data = base64.standard_b64encode(f.read()).decode("utf-8")
-    except Exception as e:
-        print(f"Error reading PDF file: {e}")
-        return None
+    pdf_data = get_pdf_data(order)
 
     message: anthropic.Message | None = None
     try:
         # Create message with PDF attachment using file path
         message = get_client().messages.create(
             model=MODEL,
-            max_tokens=16000,
+            max_tokens=MAX_TOKENS,
             system=SYSTEM_PROMPT,
             messages=[
                 {
@@ -71,6 +62,84 @@ def summarize_with_claude(order: ExecutiveOrder) -> Summary:
     except Exception as e:
         print(f"Error calling Claude API: {e}")
         sys.exit(1)
+
+    return message
+
+
+def create_claude_batch_request(order: ExecutiveOrder, uid: str) -> Request:
+    """
+    Create a Claude message for a list of executive orders.
+    """
+
+    uid = f"eo-{order.executive_order_number}-{uid}"
+    print(f"Creating batch request with uid {uid}")
+
+    pdf_data = get_pdf_data(order)
+
+    return Request(
+        custom_id=uid,
+        params=MessageCreateParamsNonStreaming(
+            model=MODEL,
+            max_tokens=MAX_TOKENS,
+            system=SYSTEM_PROMPT,
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": PROMPT},
+                        {
+                            "type": "document",
+                            "source": {
+                                "type": "base64",
+                                "media_type": "application/pdf",
+                                "data": pdf_data,
+                            },
+                        },
+                    ],
+                }
+            ],
+        ),
+    )
+
+
+def batch_summarize_with_claude(
+    orders: list[ExecutiveOrder],
+) -> tuple[MessageBatch, list[str]]:
+    """
+    Batch summarize a list of executive orders with Claude API.
+    """
+
+    # uid must be less than 8 characters
+    uid = str(uuid.uuid4())[:8]
+    client = get_client()
+    requests = []
+    request_ids = []
+    for order in orders:
+        r = create_claude_batch_request(order, uid)
+        if r is not None:
+            requests.append(r)
+            request_ids.append(r["custom_id"])
+
+    print("Creating batch...")
+    response = client.messages.batches.create(requests=requests)
+    return response, request_ids
+
+
+def summarize_with_claude(order: ExecutiveOrder) -> Summary:
+    """
+    Send PDF file to Claude API for summarization.
+
+    Args:
+        pdf_path: Path to the PDF file
+
+    Returns:
+        Dictionary with summary and metadata
+    """
+
+    message = create_claude_message(order)
+    if message is None:
+        print(f"Error summarizing {order.pdf_path}")
+        return None
 
     summary = message.content[0].text
     summary_json = json.loads(summary)

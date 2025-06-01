@@ -6,6 +6,7 @@ import requests
 from config import PDF_DIR, SUMMARIES_DIR, CLAUDE_API_KEY
 import anthropic
 import sys
+import base64
 
 
 CHUNK_SIZE = 8192  # Size of chunks when downloading files
@@ -178,3 +179,8 @@ def get_summaries() -> list[Summary]:
             summaries.append(Summary(**summary))
 
     return summaries
+
+
+def get_pdf_data(order: ExecutiveOrder) -> str:
+    with open(order.pdf_path, "rb") as f:
+        return base64.standard_b64encode(f.read()).decode("utf-8")

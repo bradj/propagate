@@ -3,6 +3,7 @@ from pathlib import Path
 import os
 from datetime import datetime
 from pprint import pprint
+import sys
 
 
 class DateTimeEncoder(json.JSONEncoder):
@@ -13,7 +14,31 @@ class DateTimeEncoder(json.JSONEncoder):
         return super().default(obj)
 
 
-def main():
+def build_from_claude_batch(jsonl_path: Path):
+    """
+    Build from a Claude batch.
+
+    This will read from the jsonl_path.
+
+    It will then save the summaries to a file.
+    """
+    with open(jsonl_path, "r") as f:
+        for line in f:
+            l = json.loads(line)
+            eo_number = l["custom_id"].split("-")[1]
+            text = l["result"]["message"]["content"][0]["text"]
+            claude_json = json.loads(text)
+
+            # write to a file in the summaries directory
+            with open(
+                Path(os.getenv("PROPAGATE_SUMMARIES_DIR"))
+                / f"EO-{eo_number}-claude.json",
+                "w",
+            ) as f:
+                json.dump(claude_json, f, cls=DateTimeEncoder)
+
+
+def build_from_summaries():
     eo_dir = Path(os.getenv("PROPAGATE_SUMMARIES_DIR"))
     eo_files = list(eo_dir.glob("*.json"))
     eo_data = []
@@ -78,4 +103,11 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) == 2:
+        p = Path(sys.argv[1])
+        if p.exists():
+            build_from_claude_batch(p)
+        else:
+            print(f"File {p} does not exist")
+    else:
+        build_from_summaries()
