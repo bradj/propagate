@@ -1,6 +1,6 @@
 # Propagate
 
-A tool for aggregating, downloading, and summarizing Executive Orders from the Federal Register.
+A tool for aggregating, downloading, and summarizing Executive Orders from the Federal Register with support for batch processing via Anthropic's API.
 
 ## Summary
 
@@ -69,7 +69,8 @@ export PROPAGATE_MODEL="claude-3-7-sonnet-20250219"
 
 - `main.py`: Handles API requests to the Federal Register and PDF downloads
 - `models.py`: Data models for Executive Orders and AI-generated summaries
-- `summarize_eo.py`: Processes PDFs with Claude AI to generate summaries; supports direct execution with EO numbers
+- `summarize_eo.py`: Processes PDFs with Claude AI to generate summaries; supports direct execution with EO numbers and batch API processing
+- `build.py`: Aggregates JSON summaries or processes batch API JSONL responses into `eo.json`
 - `prompts.py`: Contains Claude AI prompts used for generating executive order summaries
 - `eo/pdf/`: Directory containing downloaded Executive Order PDFs
 - `eo/`: Directory containing JSON summaries of Executive Orders

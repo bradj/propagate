@@ -13,8 +13,8 @@ Propagate is a Python-based tool with a TypeScript web frontend that fetches, do
 ### Core Components
 
 - `main.py`: Fetches Executive Orders from Federal Register API and downloads PDFs
-- `summarize_eo.py`: Processes PDFs with Claude AI to generate structured summaries with categorization; can be called directly with an executive order number
-- `build.py`: Aggregates individual JSON summaries into a single `eo.json` file with date processing
+- `summarize_eo.py`: Processes PDFs with Claude AI to generate structured summaries with categorization; can be called directly with an executive order number; supports batch API requests
+- `build.py`: Aggregates individual JSON summaries into a single `eo.json` file with date processing; can also digest batch API response JSONL files
 - `models.py`: Data models for Executive Orders and their AI-generated summaries
 - `prompts.py`: Contains Claude AI prompts used for generating executive order summaries
 - `util.py`: Shared utilities for API clients, file paths, and data conversion
@@ -22,8 +22,8 @@ Propagate is a Python-based tool with a TypeScript web frontend that fetches, do
 ### Data Flow
 
 1. `main.py` fetches EO metadata and downloads PDFs to `eo/pdf/`
-2. `summarize_eo.py` processes PDFs with Claude AI, generating JSON summaries in `eo/`
-3. `build.py` aggregates summaries into `eo/eo.json` with proper date formatting
+2. `summarize_eo.py` processes PDFs with Claude AI, generating JSON summaries in `eo/` (supports individual requests or batch API)
+3. `build.py` aggregates summaries into `eo/eo.json` with proper date formatting, or processes batch API JSONL responses
 4. Web build copies `eo.json` to `web/public/` for frontend consumption
 
 ## Common Commands
@@ -31,9 +31,10 @@ Propagate is a Python-based tool with a TypeScript web frontend that fetches, do
 ### Build Process
 
 ```bash
-make build                    # Full build: aggregate JSON + build web frontend
-python propagate/build.py     # Aggregate summaries into eo.json
-cd web && npm run build       # Build TypeScript frontend
+make build                           # Full build: aggregate JSON + build web frontend
+python propagate/build.py            # Aggregate summaries into eo.json
+python propagate/build.py [jsonl]    # Process batch API JSONL file into eo.json
+cd web && npm run build              # Build TypeScript frontend
 ```
 
 ### Data Processing
@@ -43,6 +44,7 @@ make run                              # Fetch EOs and download PDFs
 python propagate/main.py              # Fetch EOs and download PDFs (direct)
 python propagate/summarize_eo.py      # Generate AI summaries for all PDFs
 python propagate/summarize_eo.py 14303 # Generate AI summary for specific EO number
+# Batch processing also supported via Anthropic's batch API
 ```
 
 ### Web Development
@@ -68,5 +70,6 @@ Required environment variables (typically in `.envrc`):
 - **PDF Processing**: Uses base64 encoding to send PDFs to Claude API for analysis
 - **Incremental Updates**: System skips already-downloaded PDFs and existing summaries to enable cost-effective incremental processing
 - **Duplicate Prevention**: `summarize_eo.py` checks for existing summary files before processing to avoid reprocessing and unnecessary API costs
+- **Batch Processing**: Supports Anthropic's batch API for cost-effective processing of multiple executive orders with automatic JSONL response handling
 - **Search Functionality**: Web frontend includes fuzzy search powered by fuse.js, enabling real-time filtering across titles, summaries, categories, and content fields
 - **Interactive UI**: TypeScript-based frontend with responsive design, search capabilities, and structured display of executive order metadata and analysis

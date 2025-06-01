@@ -15,3 +15,6 @@ queue:
 
 run:
 	python propagate/main.py
+
+run-batch:
+	python propagate/main.py batch
