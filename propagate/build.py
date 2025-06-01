@@ -4,6 +4,12 @@ import os
 from datetime import datetime
 from pprint import pprint
 import sys
+from util import (
+    fetch_all_executive_orders,
+    claude_json_to_summary,
+    save_summary,
+    get_summary_path,
+)
 
 
 class DateTimeEncoder(json.JSONEncoder):
@@ -22,10 +28,12 @@ def build_from_claude_batch(jsonl_path: Path):
 
     It will then save the summaries to a file.
     """
+    eos = fetch_all_executive_orders()
+
     with open(jsonl_path, "r") as f:
         for line in f:
             l = json.loads(line)
-            eo_number = l["custom_id"].split("-")[1]
+            eo_number = int(l["custom_id"].split("-")[1])
             text = l["result"]["message"]["content"][0]["text"]
             claude_json = json.loads(text)
 
@@ -36,6 +44,14 @@ def build_from_claude_batch(jsonl_path: Path):
                 "w",
             ) as f:
                 json.dump(claude_json, f, cls=DateTimeEncoder)
+
+            order = [eo for eo in eos if eo.executive_order_number == eo_number][0]
+            summary = claude_json_to_summary(claude_json, order)
+            summary_path = get_summary_path(order)
+
+            # Save summary
+            saved_path = save_summary(summary, summary_path)
+            print(f"Summary saved to {saved_path}")
 
 
 def build_from_summaries():
@@ -109,5 +125,5 @@ if __name__ == "__main__":
             build_from_claude_batch(p)
         else:
             print(f"File {p} does not exist")
-    else:
-        build_from_summaries()
+
+    build_from_summaries()

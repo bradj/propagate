@@ -3,7 +3,7 @@
 from config import MODEL, MAX_TOKENS
 from prompts import PROMPT, SYSTEM_PROMPT
 from pathlib import Path
-from models import ExecutiveOrder, Summary, Categories
+from models import ExecutiveOrder, Summary
 from typing import Optional
 from util import (
     convert_to_json,
@@ -11,6 +11,8 @@ from util import (
     get_summary_path,
     fetch_all_executive_orders,
     get_pdf_data,
+    save_summary,
+    claude_json_to_summary,
 )
 from util import get_client
 import anthropic
@@ -146,58 +148,6 @@ def summarize_with_claude(order: ExecutiveOrder) -> Summary:
     save_claude_json(summary_json, get_claude_json_path(order))
 
     return summary_json
-
-
-def claude_json_to_summary(summary_json: dict, order: ExecutiveOrder) -> Summary:
-    categories = Categories(
-        policy_domain=summary_json["categories"]["policy_domain"],
-        regulatory_impact=summary_json["categories"]["regulatory_impact"],
-        constitutional_authority=summary_json["categories"]["constitutional_authority"],
-        duration=summary_json["categories"]["duration"],
-        scope_of_impact=summary_json["categories"]["scope_of_impact"],
-        political_context=summary_json["categories"]["political_context"],
-        legal_framework=summary_json["categories"]["legal_framework"],
-        budgetary_implications=summary_json["categories"]["budgetary_implications"],
-        implementation_timeline=summary_json["categories"]["implementation_timeline"],
-        precedential_value=summary_json["categories"]["precedential_value"],
-    )
-
-    return Summary(
-        title=order.title,
-        summary=summary_json["summary"],
-        purpose=summary_json["purpose"],
-        effective_date=summary_json["effective_date"],
-        expiration_date=summary_json["expiration_date"],
-        economic_effects=summary_json["economic_effects"],
-        geopolitical_effects=summary_json["geopolitical_effects"],
-        deeper_dive=summary_json["deeper_dive"],
-        pdf_path=order.pdf_path,
-        publication_date=order.publication_date,
-        signing_date=order.signing_date,
-        original_url=order.html_url,
-        eo_number=int(order.executive_order_number),
-        positive_impacts=summary_json["positive_impacts"],
-        negative_impacts=summary_json["negative_impacts"],
-        key_industries=summary_json["key_industries"],
-        categories=categories,
-    )
-
-
-def save_summary(summary: Summary, summary_path: Path) -> Path:
-    """
-    Save the summary to a JSON file.
-
-    Args:
-        summary_data: The summary data
-        pdf_path: Path to the PDF file
-
-    Returns:
-        Path to the saved summary file
-    """
-    with open(summary_path, "w") as f:
-        json.dump(summary, f, indent=2, default=convert_to_json)
-
-    return summary_path
 
 
 def process_pdf(order: ExecutiveOrder, force: bool = False) -> Optional[Summary]:
