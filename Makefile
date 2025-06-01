@@ -1,4 +1,4 @@
-.PHONY: build queue web
+.PHONY: build queue web deploy run
 build:
 	python propagate/build.py
 	cp eo/eo.json web/public
@@ -12,3 +12,6 @@ deploy: build
 
 queue:
 	redis-cli KEYS "*:queue:*" | xargs -n 1 redis-cli LRANGE 0 -1
+
+run:
+	python propagate/main.py

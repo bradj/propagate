@@ -45,7 +45,7 @@ The project handles pagination, duplicate downloads, and provides simple status 
 4. Get PDF's and process them
 
    ```bash
-   python propagate/federal_register.py
+   make run
    ```
 
 5. Build & Run Website
@@ -67,9 +67,9 @@ export PROPAGATE_MODEL="claude-3-7-sonnet-20250219"
 
 ## Project Structure
 
-- `federal_register.py`: Handles API requests to the Federal Register and PDF downloads
-- `executive_order.py`: Defines the data model for Executive Orders
+- `main.py`: Handles API requests to the Federal Register and PDF downloads
+- `models.py`: Data models for Executive Orders and AI-generated summaries
 - `summarize_eo.py`: Processes PDFs with Claude AI to generate summaries
 - `eo/pdf/`: Directory containing downloaded Executive Order PDFs
 - `eo/`: Directory containing JSON summaries of Executive Orders
-- `web`: Directory containing a web view for the JSON download. Written in VanillaJS.
+- `web/`: TypeScript web frontend with search functionality powered by fuse.js

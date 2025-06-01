@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 
-from config import MODEL, PDF_DIR, SUMMARIES_DIR, MAX_SUMMARY_LENGTH
-from executive_order import ExecutiveOrder
+from config import MODEL, MAX_SUMMARY_LENGTH
 from pathlib import Path
-from summary import Summary, Categories
+from models import ExecutiveOrder, Summary, Categories
 from typing import Optional
 from util import convert_to_json, get_claude_json_path, get_summary_path
 from util import get_client

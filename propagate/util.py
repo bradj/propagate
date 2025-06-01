@@ -1,5 +1,4 @@
-from executive_order import ExecutiveOrder
-from summary import Summary
+from models import ExecutiveOrder, Summary
 from pathlib import Path
 import json
 from typing import List
