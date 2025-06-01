@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from config import MODEL, MAX_SUMMARY_LENGTH
+from config import MODEL, MAX_SUMMARY_LENGTH, SUMMARIES_DIR
 from pathlib import Path
 from models import ExecutiveOrder, Summary, Categories
 from typing import Optional
