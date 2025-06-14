@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import sys
 import requests
-import uuid
 from config import PDF_DIR
 from summarize_eo import process_pdf, batch_summarize_with_claude
 import traceback
@@ -22,7 +21,10 @@ def main():
     except requests.exceptions.RequestException as e:
         print(f"Error fetching data: {e}")
 
+    orders = [order for order in orders if not order.summary_exists()]
+
     if batch:
+        # batch will summarize all orders
         response, request_ids = batch_summarize_with_claude(orders)
         print(response)
 
@@ -33,9 +35,14 @@ def main():
 
         sys.exit(0)
 
+    if len(orders) == 0:
+        print("No orders to process")
+        sys.exit(0)
+
     try:
         for order in orders:
             process_pdf(order)
+            print(f"Processed {order.executive_order_number}")
     except Exception as e:
         print(f"Error processing PDF: {e}")
         traceback.print_exc()

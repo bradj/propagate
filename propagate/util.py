@@ -3,7 +3,7 @@ from pathlib import Path
 import json
 from typing import List
 import requests
-from config import PDF_DIR, SUMMARIES_DIR, CLAUDE_API_KEY
+from config import PDF_DIR, CLAUDE_API_KEY
 import anthropic
 import sys
 import base64
@@ -147,18 +147,6 @@ def fetch_all_executive_orders(
     return success_orders
 
 
-def get_claude_json_path(order: ExecutiveOrder) -> Path:
-    return Path(f"{SUMMARIES_DIR}/EO-{order.executive_order_number}-claude.json")
-
-
-def get_summary_path(order: ExecutiveOrder) -> Path:
-    return Path(f"{SUMMARIES_DIR}/EO-{order.executive_order_number}.json")
-
-
-def get_summary_path_eo(eo_number: str) -> Path:
-    return Path(f"{SUMMARIES_DIR}/EO-{eo_number}.json")
-
-
 """
 This is the function that gets the summaries for all the executive orders.
 It fetches all the executive orders from the Federal Register and then gets the summaries for each of them.
@@ -170,7 +158,7 @@ def get_summaries() -> list[Summary]:
     eos = fetch_all_executive_orders()
     summaries = []
     for eo in eos:
-        summary_path = get_summary_path(eo)
+        summary_path = eo.get_summary_path()
         if not summary_path.exists():
             continue
 

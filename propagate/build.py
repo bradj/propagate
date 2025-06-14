@@ -2,13 +2,11 @@ import json
 from pathlib import Path
 import os
 from datetime import datetime
-from pprint import pprint
 import sys
 from util import (
     fetch_all_executive_orders,
     claude_json_to_summary,
     save_summary,
-    get_summary_path,
 )
 
 
@@ -47,7 +45,7 @@ def build_from_claude_batch(jsonl_path: Path):
 
             order = [eo for eo in eos if eo.executive_order_number == eo_number][0]
             summary = claude_json_to_summary(claude_json, order)
-            summary_path = get_summary_path(order)
+            summary_path = order.get_summary_path()
 
             # Save summary
             saved_path = save_summary(summary, summary_path)

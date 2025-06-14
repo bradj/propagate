@@ -6,9 +6,6 @@ from pathlib import Path
 from models import ExecutiveOrder, Summary
 from typing import Optional
 from util import (
-    convert_to_json,
-    get_claude_json_path,
-    get_summary_path,
     fetch_all_executive_orders,
     get_pdf_data,
     save_summary,
@@ -145,13 +142,13 @@ def summarize_with_claude(order: ExecutiveOrder) -> Summary:
 
     summary = message.content[0].text
     summary_json = json.loads(summary)
-    save_claude_json(summary_json, get_claude_json_path(order))
+    save_claude_json(summary_json, order.get_claude_json_path())
 
     return summary_json
 
 
 def process_pdf(order: ExecutiveOrder, force: bool = False) -> Optional[Summary]:
-    summary_path = get_summary_path(order)
+    summary_path = order.get_summary_path()
 
     # Skip if summary already exists
     if summary_path.exists() and not force:

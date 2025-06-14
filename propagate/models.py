@@ -2,6 +2,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from config import SUMMARIES_DIR
+
 
 @dataclass
 class Categories:
@@ -83,3 +85,12 @@ class ExecutiveOrder:
 
         # Initialize with the matched fields, ignoring extra fields
         return cls(**{k: v for k, v in data.items() if k in cls.__annotations__})
+
+    def summary_exists(self) -> bool:
+        return self.get_summary_path().exists()
+
+    def get_summary_path(self) -> Path:
+        return Path(f"{SUMMARIES_DIR}/EO-{self.executive_order_number}.json")
+
+    def get_claude_json_path(self) -> Path:
+        return Path(f"{SUMMARIES_DIR}/EO-{self.executive_order_number}-claude.json")
