@@ -11,3 +11,4 @@ web/node_modules
 .netlify
 batch_results/
 request_ids_*.txt
+eo.json
