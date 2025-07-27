@@ -12,7 +12,6 @@ type Eo = {
   expiration_date: Date | null
   geopolitical_effects: string
   pdf_file: string
-  publication_date: Date
   purpose: string
   signing_date: Date
   summary: string
@@ -23,10 +22,6 @@ type Eo = {
 }
 
 const metaList = [
-  {
-    label: "Publication Date",
-    key: "publication_date",
-  },
   {
     label: "Signing Date",
     key: "signing_date",

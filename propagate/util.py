@@ -100,7 +100,6 @@ def claude_json_to_summary(summary_json: dict, order: ExecutiveOrder) -> Summary
         geopolitical_effects=summary_json["geopolitical_effects"],
         deeper_dive=summary_json["deeper_dive"],
         pdf_path=order.pdf_path,
-        publication_date=order.publication_date,
         signing_date=order.signing_date,
         original_url=order.html_url,
         eo_number=int(order.executive_order_number),

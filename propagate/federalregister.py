@@ -67,7 +67,6 @@ def fetch_all_executive_orders(
             "pdf_url",
             "type",
             "subtype",
-            "publication_date",
             "signing_date",
             "start_page",
             "title",

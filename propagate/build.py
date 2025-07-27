@@ -78,7 +78,7 @@ def build_from_summaries():
             eo_data.append(obj)
 
     # convert these to date objects
-    # effective_date, publication_date, signing_date
+    # effective_date, signing_date
     for eo in eo_data:
         try:
             if "12:01" in eo["effective_date"]:
@@ -112,7 +112,6 @@ def build_from_summaries():
                 # leave as is
                 pass
 
-        eo["publication_date"] = datetime.strptime(eo["publication_date"], "%Y-%m-%d")
         eo["signing_date"] = datetime.strptime(eo["signing_date"], "%Y-%m-%d")
         # timestamp is a float in seconds since epoch
         eo["timestamp"] = datetime.fromtimestamp(float(eo["timestamp"]))

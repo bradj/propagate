@@ -47,7 +47,6 @@ class Summary:
     original_url: str
     pdf_path: Path
     positive_impacts: str
-    publication_date: str
     purpose: str
     signing_date: str
     summary: str
@@ -67,7 +66,6 @@ class ExecutiveOrder:
     pdf_path: Optional[str] = None
     type: Optional[str] = None
     subtype: Optional[str] = None
-    publication_date: Optional[str] = None
     signing_date: Optional[str] = None
     start_page: Optional[int] = None
     title: Optional[str] = None
