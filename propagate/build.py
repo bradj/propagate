@@ -32,8 +32,18 @@ def build_from_claude_batch(jsonl_path: Path):
         for line in f:
             l = json.loads(line)
             eo_number = int(l["custom_id"].split("-")[1])
-            text = l["result"]["message"]["content"][0]["text"]
-            claude_json = json.loads(text)
+            result = l["result"]
+            if result["type"] != "succeeded":
+                print(f"Skipping {eo_number}: {result['type']} - {result['error']}")
+                continue
+
+            text = result["message"]["content"][0]["text"]
+
+            try:
+                claude_json = json.loads(text)
+            except Exception as ex:
+                print(f"{eo_number}: {ex}")
+                continue
 
             # write to a file in the summaries directory
             with open(

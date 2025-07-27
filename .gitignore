@@ -9,3 +9,5 @@ web/node_modules
 
 # Local Netlify folder
 .netlify
+batch_results/
+request_ids_*.txt

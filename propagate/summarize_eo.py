@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from config import MODEL, MAX_TOKENS
-from prompts import PROMPT, SYSTEM_PROMPT
+from prompts import PROMPT, SYSTEM_PROMPT_EXECUTIVE_ORDER
 from pathlib import Path
 from models import ExecutiveOrder, Summary
 from typing import Optional
@@ -40,7 +40,7 @@ def create_claude_message(order: ExecutiveOrder) -> Message:
         message = get_client().messages.create(
             model=MODEL,
             max_tokens=MAX_TOKENS,
-            system=SYSTEM_PROMPT,
+            system=SYSTEM_PROMPT_EXECUTIVE_ORDER,
             messages=[
                 {
                     "role": "user",
@@ -65,39 +65,44 @@ def create_claude_message(order: ExecutiveOrder) -> Message:
     return message
 
 
-def create_claude_batch_request(order: ExecutiveOrder, uid: str) -> Request:
+def create_claude_batch_request(order: ExecutiveOrder, uid: str) -> tuple[Request, int]:
     """
     Create a Claude message for a list of executive orders.
     """
 
-    uid = f"eo-{order.executive_order_number}-{uid}"
     print(f"Creating batch request with uid {uid}")
 
     pdf_data = get_pdf_data(order)
 
-    return Request(
-        custom_id=uid,
-        params=MessageCreateParamsNonStreaming(
-            model=MODEL,
-            max_tokens=MAX_TOKENS,
-            system=SYSTEM_PROMPT,
-            messages=[
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": PROMPT},
-                        {
-                            "type": "document",
-                            "source": {
-                                "type": "base64",
-                                "media_type": "application/pdf",
-                                "data": pdf_data,
+    # get size of pdf in bytes
+    pdf_size = len(pdf_data) / 1024 / 1024  # convert to MB
+
+    return (
+        Request(
+            custom_id=uid,
+            params=MessageCreateParamsNonStreaming(
+                model=MODEL,
+                max_tokens=MAX_TOKENS,
+                system=SYSTEM_PROMPT_EXECUTIVE_ORDER,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": PROMPT},
+                            {
+                                "type": "document",
+                                "source": {
+                                    "type": "base64",
+                                    "media_type": "application/pdf",
+                                    "data": pdf_data,
+                                },
                             },
-                        },
-                    ],
-                }
-            ],
+                        ],
+                    }
+                ],
+            ),
         ),
+        pdf_size,
     )
 
 
@@ -109,15 +114,16 @@ def batch_summarize_with_claude(
     """
 
     # uid must be less than 8 characters
-    uid = str(uuid.uuid4())[:8]
+    uid_suffix = str(uuid.uuid4())[:8]
     client = get_client()
     requests = []
     request_ids = []
     for order in orders:
-        r = create_claude_batch_request(order, uid)
-        if r is not None:
-            requests.append(r)
-            request_ids.append(r["custom_id"])
+        uid = f"eo-{order.executive_order_number}-{uid_suffix}"
+        request, _ = create_claude_batch_request(order, uid)
+        if request is not None:
+            requests.append(request)
+            request_ids.append(uid)
 
     print("Creating batch...")
     response = client.messages.batches.create(requests=requests)

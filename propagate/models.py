@@ -6,6 +6,20 @@ from config import SUMMARIES_DIR
 
 
 @dataclass
+class President:
+    name: str
+    key: str
+
+
+PRESIDENTS: list[President] = [
+    President(name="Donald Trump", key="donald-trump"),
+    President(name="Joseph R. Biden Jr.", key="joe-biden"),
+    President(name="Barack Obama", key="barack-obama"),
+    President(name="George W. Bush", key="george-w-bush"),
+]
+
+
+@dataclass
 class Categories:
     policy_domain: str
     regulatory_impact: str
@@ -38,6 +52,7 @@ class Summary:
     signing_date: str
     summary: str
     title: str
+    president: str
 
 
 @dataclass
@@ -62,6 +77,7 @@ class ExecutiveOrder:
     full_text_xml_url: Optional[str] = None
     body_html_url: Optional[str] = None
     json_url: Optional[str] = None
+    president: Optional[str] = None
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "ExecutiveOrder":
