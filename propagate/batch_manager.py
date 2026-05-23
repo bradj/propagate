@@ -2,12 +2,14 @@
 """
 Manage Claude batch requests - list, check status, and process results.
 """
+
 import argparse
 import os
-import requests
 from pathlib import Path
-from util import get_client
+
+import requests
 from build import build_from_claude_batch
+from util import get_client
 
 
 def list_batches(limit: int = 20):
@@ -35,7 +37,7 @@ def list_batches(limit: int = 20):
         if batch.request_counts.errored > 0:
             print(f"    Errored: {batch.request_counts.errored}")
         if hasattr(batch, "results_url") and batch.results_url:
-            print(f"  Results: Available for download")
+            print("  Results: Available for download")
         print()
 
 
@@ -94,7 +96,7 @@ def download_and_process_batch(batch_id: str):
     output_dir.mkdir(exist_ok=True)
     output_file = output_dir / f"batch_{batch_id}.jsonl"
 
-    print(f"Downloading batch results...")
+    print("Downloading batch results...")
     # add PROPAGATE_ANTHROPIC_API_KEY to x-api-key header
     response = requests.get(
         batch.results_url,

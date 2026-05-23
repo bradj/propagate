@@ -1,11 +1,12 @@
-from models import ExecutiveOrder, Summary, Categories
-from federalregister import fetch_all_executive_orders
-from pathlib import Path
-import json
-from config import CLAUDE_API_KEY
-import anthropic
-import sys
 import base64
+import json
+import sys
+from pathlib import Path
+
+import anthropic
+from config import CLAUDE_API_KEY
+from federalregister import fetch_all_executive_orders
+from models import Categories, ExecutiveOrder, Summary
 
 client: anthropic.Anthropic | None = None
 
@@ -15,7 +16,8 @@ def get_client():
 
     if not CLAUDE_API_KEY:
         print(
-            "Claude API key is required. Set the ANTHROPIC_API_KEY environment variable."
+            "Claude API key is required."
+            " Set the ANTHROPIC_API_KEY environment variable."
         )
         sys.exit(1)
 
@@ -33,9 +35,10 @@ def convert_to_json(obj):
 
 
 """
-This is the function that gets the summaries for all the executive orders.
-It fetches all the executive orders from the Federal Register and then gets the summaries for each of them.
-It then returns a list of Summary objects. It will only return summaries that already exist.
+Get summaries for all executive orders.
+
+Fetches all executive orders from the Federal Register
+and returns Summary objects for those that already exist.
 """
 
 

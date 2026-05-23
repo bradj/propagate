@@ -1,25 +1,25 @@
 #!/usr/bin/env python3
 
-from config import MODEL, MAX_TOKENS
-from prompts import PROMPT, SYSTEM_PROMPT_EXECUTIVE_ORDER
-from pathlib import Path
-from models import ExecutiveOrder, Summary
-from typing import Optional
-from util import (
-    fetch_all_executive_orders,
-    get_pdf_data,
-    save_summary,
-    claude_json_to_summary,
-)
-from util import get_client
-import anthropic
-from anthropic.types.messages.message_batch import MessageBatch
-from anthropic.types.messages.batch_create_params import Request
-from anthropic.types.message_create_params import MessageCreateParamsNonStreaming
-from anthropic.types.message import Message
 import json
 import sys
 import uuid
+from pathlib import Path
+from typing import Optional
+
+from anthropic.types.message import Message
+from anthropic.types.message_create_params import MessageCreateParamsNonStreaming
+from anthropic.types.messages.batch_create_params import Request
+from anthropic.types.messages.message_batch import MessageBatch
+from config import MAX_TOKENS, MODEL
+from models import ExecutiveOrder, Summary
+from prompts import PROMPT, SYSTEM_PROMPT_EXECUTIVE_ORDER
+from util import (
+    claude_json_to_summary,
+    fetch_all_executive_orders,
+    get_client,
+    get_pdf_data,
+    save_summary,
+)
 
 
 def save_claude_json(json_data: dict, json_path: Path) -> Path:
@@ -28,13 +28,21 @@ def save_claude_json(json_data: dict, json_path: Path) -> Path:
     return json_path
 
 
-def create_claude_message(order: ExecutiveOrder) -> Message:
+def create_claude_message(order: ExecutiveOrder) -> Message | None:
     """
     Create a Claude message for a given executive order.
     """
     pdf_data = get_pdf_data(order)
 
-    message: anthropic.Message | None = None
+    # get size of pdf in bytes
+    # pdf should be less than 33554432 bytes
+    pdf_size = len(pdf_data)
+
+    if pdf_size > 33554432:
+        print("PDF size is too large")
+        return None
+
+    message: Message | None = None
     try:
         # Create message with PDF attachment using file path
         message = get_client().messages.create(
@@ -75,7 +83,7 @@ def create_claude_batch_request(order: ExecutiveOrder, uid: str) -> tuple[Reques
     pdf_data = get_pdf_data(order)
 
     # get size of pdf in bytes
-    pdf_size = len(pdf_data) / 1024 / 1024  # convert to MB
+    pdf_size = int(len(pdf_data) / 1024 / 1024)  # convert to MB
 
     return (
         Request(
@@ -108,6 +116,7 @@ def create_claude_batch_request(order: ExecutiveOrder, uid: str) -> tuple[Reques
 
 def batch_summarize_with_claude(
     orders: list[ExecutiveOrder],
+    president_key: str,
 ) -> tuple[MessageBatch, list[str]]:
     """
     Batch summarize a list of executive orders with Claude API.
@@ -119,7 +128,7 @@ def batch_summarize_with_claude(
     requests = []
     request_ids = []
     for order in orders:
-        uid = f"eo-{order.executive_order_number}-{uid_suffix}"
+        uid = f"eo-{president_key}-{order.executive_order_number}-{uid_suffix}"
         request, _ = create_claude_batch_request(order, uid)
         if request is not None:
             requests.append(request)
@@ -130,7 +139,7 @@ def batch_summarize_with_claude(
     return response, request_ids
 
 
-def summarize_with_claude(order: ExecutiveOrder) -> Summary:
+def summarize_with_claude(order: ExecutiveOrder) -> Summary | None:
     """
     Send PDF file to Claude API for summarization.
 
@@ -158,18 +167,18 @@ def process_pdf(order: ExecutiveOrder, force: bool = False) -> Optional[Summary]
 
     # Skip if summary already exists
     if summary_path.exists() and not force:
-        print(f"Summary already exists for {order.pdf_path}, skipping...")
-        return None
+        raise Exception(f"Summary already exists for {order.pdf_path}")
 
     print(f"Processing {order.pdf_path}...")
 
     # Summarize with Claude using the PDF file directly
     summary_data = summarize_with_claude(order)
     if summary_data is None:
-        print(f"Error summarizing {order.pdf_path}")
-        return None
+        raise Exception(f"Error summarizing {order.pdf_path}")
 
     summary = claude_json_to_summary(summary_data, order)
+
+    print(f"President: {summary.president}")
 
     # Save summary
     saved_path = save_summary(summary, summary_path)

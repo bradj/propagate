@@ -1,0 +1,136 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(basename:*)",
+      "Bash(dirname:*)",
+      "Bash(gh pr view *)",
+      "Bash(gh pr list *)",
+      "Bash(git stash *)",
+      "Bash(grep *)",
+      "Bash(gofmt *)",
+      "Bash(head *)",
+      "Bash(jq *)",
+      "Bash(make install)",
+      "Bash(make fmt)",
+      "Bash(tail *)",
+      "Bash(wc *)",
+      "Skill(superpowers:brainstorming)",
+      "Skill(superpowers:requesting-code-review)",
+      "Skill(superpowers:writing-plans)",
+      "WebFetch(domain:docs.anthropic.com)",
+      "WebFetch(domain:api.github.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:registry.npmjs.org)"
+    ],
+    "deny": [
+      "Bash(cd)",
+      "Bash(cd *)",
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Bash(op)",
+      "Bash(op:*)",
+      "Bash(aws)",
+      "Bash(aws:*)",
+      "Bash(env)",
+      "Bash(env:*)",
+      "Bash(gcloud)",
+      "Bash(gcloud:*)",
+      "Bash(gh auth)",
+      "Bash(gh auth *)",
+      "Bash(gh secret)",
+      "Bash(gh secret *)",
+      "Bash(history)",
+      "Bash(history:*)",
+      "Bash(make setup)",
+      "Bash(make build)",
+      "Bash(make run)",
+      "Bash(make run-*)",
+      "Bash(make batch-*)",
+      "Bash(make claude)",
+      "Bash(printenv)",
+      "Bash(printenv:*)",
+      "Bash(terraform)",
+      "Bash(terraform:*)",
+      "Read(~/.aws/**)",
+      "Read(~/.netrc)",
+      "Read(~/.npmrc)",
+      "Read(~/.config/gcloud/**)",
+      "Read(~/.config/op/**)",
+      "Read(~/.config/gh/**)",
+      "Read(~/.docker/**)",
+      "Read(~/.git-credentials)",
+      "Read(~/.bash_history)",
+      "Read(~/.zsh_history)",
+      "Read(~/.config/fish/fish_history)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": []
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": []
+      }
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "input=$(cat); current_dir=$(echo \"$input\" | jq -r '.workspace.current_dir'); dir_name=$(basename \"$current_dir\"); git_info=\"\"; if [ -d \"$current_dir/.git\" ] || git -C \"$current_dir\" rev-parse --git-dir > /dev/null 2>&1; then branch=$(git -C \"$current_dir\" --no-optional-locks symbolic-ref --short HEAD 2>/dev/null || git -C \"$current_dir\" --no-optional-locks rev-parse --short HEAD 2>/dev/null); if [ -n \"$branch\" ]; then if [ -n \"$(git -C \"$current_dir\" --no-optional-locks status --porcelain 2>/dev/null)\" ]; then git_info=\" on $(printf '\\033[0;31m')${branch}$(printf '\\033[0m') $(printf '\\033[0;31m')✗$(printf '\\033[0m')\"; else git_info=\" on $(printf '\\033[0;32m')${branch}$(printf '\\033[0m')\"; fi; fi; fi; context_remaining=$(echo \"$input\" | jq -r '.context_window.remaining_percentage // empty'); printf \"$(printf '\\033[0;36m')$(whoami)$(printf '\\033[0m') in $(printf '\\033[0;35m')${dir_name}$(printf '\\033[0m')${git_info}\"; if [ -n \"$context_remaining\" ]; then printf \" $(printf '\\033[2m')[ctx: ${context_remaining}%%]$(printf '\\033[0m')\"; fi; printf \" \""
+  },
+  "enabledPlugins": {
+    "superpowers@superpowers-marketplace": true,
+    "code-review@claude-code-plugins": true,
+    "chrome-devtools-mcp@chrome-devtools-plugins": true
+  },
+  "sandbox": {
+    "enabled": true,
+    "failIfUnavailable": true,
+    "filesystem": {
+      "allowWrite": ["~/.npm"],
+      "allowRead": ["~/.ssh/known_hosts"],
+      "denyRead": [
+        "~/.aws/**",
+        "~/.netrc",
+        "~/.npmrc",
+        "~/.config/gcloud/**",
+        "~/.config/op/**",
+        "~/.docker/**",
+        "~/.git-credentials",
+        "~/.bash_history",
+        "~/.zsh_history",
+        "~/.config/fish/fish_history"
+      ]
+    },
+    "network": {
+      "allowedDomains": [],
+      "allowUnixSockets": [],
+      "allowMachLookup": [],
+      "allowLocalBinding": false
+    }
+  },
+  "extraKnownMarketplaces": {
+    "superpowers-marketplace": {
+      "source": {
+        "source": "github",
+        "repo": "obra/superpowers-marketplace"
+      }
+    },
+    "claude-code-plugins": {
+      "source": {
+        "source": "github",
+        "repo": "anthropics/claude-code"
+      }
+    },
+    "claude-plugins-official": {
+      "source": {
+        "source": "github",
+        "repo": "anthropics/claude-plugins-official"
+      }
+    }
+  }
+}

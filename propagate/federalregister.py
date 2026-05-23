@@ -1,8 +1,9 @@
-from models import ExecutiveOrder
-from typing import List
-import requests
 from pathlib import Path
+from typing import List
+
+import requests
 from config import PDF_DIR
+from models import ExecutiveOrder
 
 CHUNK_SIZE = 8192  # Size of chunks when downloading files
 BASE_URL = "https://www.federalregister.gov/api/v1/documents.json"
@@ -18,7 +19,7 @@ def download_all_pdfs(
         if not pdf_path:
             continue
 
-        order.pdf_path = pdf_path
+        order.pdf_path = pdf_path.as_posix()
         success_orders.append(order)
 
     return success_orders
@@ -45,12 +46,11 @@ def download_pdf(order: ExecutiveOrder, force: bool = False) -> Path:
     return filepath
 
 
-def fetch_all_executive_orders(
+def fetch_eo_metadata(
     president: str = "donald-trump",
     start_date: str = "01/20/2000",
     end_date: str = "12/31/2030",
     per_page: int = 1000,
-    force: bool = False,
 ) -> List[ExecutiveOrder]:
     params = {
         "conditions[correction]": 0,
@@ -82,14 +82,13 @@ def fetch_all_executive_orders(
         "per_page": per_page,
     }
 
-    success_orders = []
+    all_orders = []
     page_number = 1
     current_url = BASE_URL
 
     while current_url:
         print(f"Fetching page {page_number}...")
 
-        # Use the current_url (which might be a next_page_url from previous response)
         if page_number == 1:
             response = requests.get(current_url, params=params)
         else:
@@ -98,18 +97,12 @@ def fetch_all_executive_orders(
         response.raise_for_status()
         data = response.json()
 
-        # Extract and process results
         results = data.get("results", [])
         if results:
             orders = [ExecutiveOrder.from_dict(item) for item in results]
             print(f"  Found {len(orders)} executive orders on page {page_number}")
+            all_orders.extend(orders)
 
-            # Download PDFs for this page immediately
-            orders = download_all_pdfs(orders, force)
-            success_orders.extend(orders)
-            print(f"  Downloaded {len(orders)} PDFs")
-
-        # Check for next page
         next_page_url = data.get("next_page_url")
         if next_page_url:
             current_url = next_page_url
@@ -117,4 +110,12 @@ def fetch_all_executive_orders(
         else:
             break
 
-    return success_orders
+    return all_orders
+
+
+def fetch_all_executive_orders(
+    president: str = "donald-trump",
+    force: bool = False,
+) -> List[ExecutiveOrder]:
+    orders = fetch_eo_metadata(president=president)
+    return download_all_pdfs(orders, force)

@@ -1,10 +1,11 @@
 import json
-from pathlib import Path
 import os
-from datetime import datetime
 import sys
+from datetime import datetime
+from pathlib import Path
+
+from federalregister import fetch_eo_metadata
 from util import (
-    fetch_all_executive_orders,
     claude_json_to_summary,
     save_summary,
 )
@@ -26,13 +27,15 @@ def build_from_claude_batch(jsonl_path: Path):
 
     It will then save the summaries to a file.
     """
-    eos = fetch_all_executive_orders()
+    eos = fetch_eo_metadata()
 
     with open(jsonl_path, "r") as f:
         for line in f:
-            l = json.loads(line)
-            eo_number = int(l["custom_id"].split("-")[1])
-            result = l["result"]
+            entry = json.loads(line)
+            parts = entry["custom_id"].split("-")
+            # format: eo-{president_key...}-{eo_number}-{uuid8}
+            eo_number = int(parts[-2])
+            result = entry["result"]
             if result["type"] != "succeeded":
                 print(f"Skipping {eo_number}: {result['type']} - {result['error']}")
                 continue
@@ -91,7 +94,7 @@ def build_from_summaries():
                 eo["effective_date"] = datetime.strptime(
                     eo["effective_date"], "%B %d, %Y"
                 )
-        except:
+        except (ValueError, KeyError):
             pass
 
         no_specified_date_strings = [
@@ -108,8 +111,7 @@ def build_from_summaries():
                 eo["expiration_date"] = datetime.strptime(
                     eo["expiration_date"], "%Y-%m-%d"
                 )
-            except:
-                # leave as is
+            except (ValueError, KeyError):
                 pass
 
         eo["signing_date"] = datetime.strptime(eo["signing_date"], "%Y-%m-%d")

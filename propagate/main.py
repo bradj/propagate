@@ -1,11 +1,41 @@
 #!/usr/bin/env python3
-import sys
+import json
+import traceback
+
 import requests
 from config import PDF_DIR
-from summarize_eo import process_pdf, batch_summarize_with_claude
-import traceback
 from federalregister import fetch_all_executive_orders
 from models import President
+from summarize_eo import batch_summarize_with_claude, process_pdf
+
+
+def print_last_processed(orders):
+    processed = [o for o in orders if o.summary_exists()]
+    if not processed:
+        print("No previously processed EOs found.")
+        return
+
+    last = max(processed, key=lambda o: o.signing_date or "")
+    summary_path = last.get_summary_path()
+    signing_date = last.signing_date
+    title = last.title
+    if summary_path.exists():
+        with open(summary_path) as f:
+            data = json.load(f)
+            signing_date = data.get("signing_date", signing_date)
+            title = data.get("title", title)
+
+    print(f"\nLast processed EO: {last.executive_order_number}")
+    print(f"  Title: {title}")
+    print(f"  Signed: {signing_date}")
+
+
+def print_pending(orders):
+    if not orders:
+        return
+    print(f"\nPending EOs ({len(orders)}):")
+    for order in sorted(orders, key=lambda o: o.signing_date or ""):
+        print(f"  EO {order.executive_order_number}: {order.title} ({order.signing_date})")
 
 
 def fetch_and_process_president(
@@ -24,13 +54,15 @@ def fetch_and_process_president(
     for order in orders:
         order.president = president.name
 
+    print_last_processed(orders)
+
     if not force:
         orders = [order for order in orders if not order.summary_exists()]
 
-    print(f"Found {len(orders)} orders to process for {president.name}")
+    print_pending(orders)
 
     if len(orders) == 0:
-        print(f"No orders to process for {president.name}")
+        print(f"\nNo orders to process for {president.name}")
         return
 
     # find duplicate orders
@@ -45,10 +77,10 @@ def fetch_and_process_president(
     if batch:
         # For batch mode with force, we need to pass all orders
         # For batch mode without force, orders are already filtered
-        response, request_ids = batch_summarize_with_claude(orders)
+        response, request_ids = batch_summarize_with_claude(orders, president.key)
 
         print("\n" + "=" * 60)
-        print(f"BATCH CREATED SUCCESSFULLY")
+        print("BATCH CREATED SUCCESSFULLY")
         print(f"Batch ID: {response.id}")
         print(f"President: {president.name}")
         print(f"Orders: {len(request_ids)}")
@@ -57,7 +89,8 @@ def fetch_and_process_president(
             f"\nTo check status: python propagate/batch_manager.py status {response.id}"
         )
         print(
-            f"To process when ready: python propagate/batch_manager.py process {response.id}"
+            "To process when ready: "
+            f"python propagate/batch_manager.py process {response.id}"
         )
 
         # append request ids to a file with batch ID as header
@@ -81,6 +114,7 @@ def fetch_and_process_president(
 def main():
     """Main function to fetch and download executive orders."""
     import argparse
+
     from models import PRESIDENTS
 
     # Build list of valid president choices
@@ -101,7 +135,10 @@ def main():
         "--president",
         choices=president_choices,
         default=default_president,
-        help=f'President to process (default: {default_president}). Use "all" for all presidents.',
+        help=(
+            f"President to process (default: {default_president})."
+            ' Use "all" for all presidents.'
+        ),
     )
 
     args = parser.parse_args()

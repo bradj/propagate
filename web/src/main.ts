@@ -292,10 +292,12 @@ function handleSearch(query: string) {
 function setupSearchInput() {
   const searchInput = document.getElementById('search-input') as HTMLInputElement
   if (!searchInput) return
-  
+
+  let debounceTimer: ReturnType<typeof setTimeout>
   searchInput.addEventListener('input', (e) => {
     const query = (e.target as HTMLInputElement).value
-    handleSearch(query)
+    clearTimeout(debounceTimer)
+    debounceTimer = setTimeout(() => handleSearch(query), 1000)
   })
 }
 

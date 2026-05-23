@@ -1,0 +1,26 @@
+{
+  "languages": {
+    "Python": {
+      "tab_size": 4,
+      "formatter": {
+        "external": {
+          "command": "ruff",
+          "arguments": ["format", "--config", "pyproject.toml", "-"]
+        }
+      },
+      "format_on_save": "on",
+      "code_actions_on_format": {
+        "source.organizeImports": true
+      }
+    }
+  },
+  "lsp": {
+    "ruff": {
+      "initialization_options": {
+        "settings": {
+          "configuration": "pyproject.toml"
+        }
+      }
+    }
+  }
+}
