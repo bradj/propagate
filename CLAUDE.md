@@ -21,6 +21,9 @@ Propagate is a Python-based tool with a TypeScript web frontend that fetches, do
 - `config.py`: Configuration management for environment variables and paths
 - `federalregister.py`: Federal Register API integration for fetching executive order metadata and downloading PDFs
 - `refine.py`: Post-processing tool for refining industry categorization using predefined industry lists
+- `run.py`: Automated pipeline orchestrator — fetches EOs, submits batch, polls, processes, builds, and deploys in one command
+- `run_history.py`: Queries the SQLite database to display pipeline run history and per-EO tracking
+- `db.py`: SQLite database module (`propagate.db`) with `runs` and `eos` tables for pipeline tracking
 
 ### Data Flow
 
@@ -65,6 +68,20 @@ python propagate/refine.py            # Refine industry categorization with pred
 cd web && npm run dev         # Start development server
 cd web && npm run preview     # Preview built site
 ```
+
+### Automated Pipeline
+
+```bash
+make run-auto                 # Run full automated pipeline (fetch → batch → poll → build → deploy)
+make run-history              # Show recent pipeline run history
+make test                     # Run test suite
+python propagate/run.py       # Run pipeline directly
+python propagate/run_history.py  # Show run history directly
+```
+
+The pipeline stores all run data in `propagate.db` (SQLite, gitignored). Schema:
+- `runs`: id, started_at, finished_at, president, eos_found, eos_new, batch_id, poll_seconds, status, error, deployed
+- `eos`: id, run_id, eo_number, president, status, processed_at
 
 ### Deployment
 

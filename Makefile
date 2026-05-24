@@ -1,6 +1,6 @@
 PYTHON := .venv/bin/python
 
-.PHONY: setup install build queue web deploy run run-batch run-force batch-list batch-status batch-process
+.PHONY: setup install build queue web deploy run run-batch run-force batch-list batch-status batch-process run-auto run-history test
 
 setup:
 	python3 -m venv .venv
@@ -62,6 +62,18 @@ batch-status:
 batch-process:
 	@read -p "Enter batch ID: " batch_id; \
 	$(PYTHON) propagate/batch_manager.py process $$batch_id
+
+# Automated pipeline
+run-auto:
+	$(PYTHON) propagate/run.py
+
+# Pipeline run history
+run-history:
+	$(PYTHON) propagate/run_history.py
+
+# Run tests
+test:
+	.venv/bin/python -m pytest tests/ -v
 
 .PHONY: fmt
 fmt:
