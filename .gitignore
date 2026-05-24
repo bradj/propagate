@@ -13,3 +13,4 @@ web/node_modules
 batch_results/
 request_ids_*.txt
 eo.json
+propagate.db
