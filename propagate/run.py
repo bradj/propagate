@@ -81,13 +81,44 @@ class PipelineRunner:
         print("Processing batch results...")
         download_and_process_batch(batch_id)
 
+        succeeded = []
+        failed = []
         for order in new_orders:
-            self.db.insert_eo(
-                run_id,
-                eo_number=order.executive_order_number,
-                president=president.key,
-                status="success",
+            if order.summary_exists():
+                succeeded.append(order)
+                self.db.insert_eo(
+                    run_id,
+                    eo_number=order.executive_order_number,
+                    president=president.key,
+                    status="success",
+                )
+            else:
+                failed.append(order)
+                self.db.insert_eo(
+                    run_id,
+                    eo_number=order.executive_order_number,
+                    president=president.key,
+                    status="failed",
+                )
+
+        if failed:
+            print(
+                f"{len(failed)} EOs failed: "
+                f"{', '.join(str(o.executive_order_number) for o in failed)}"
             )
+
+        if not succeeded:
+            print("No EOs were successfully processed. Skipping deploy.")
+            self.db.finish_run(
+                run_id,
+                status="failed",
+                eos_found=eos_found,
+                eos_new=eos_new,
+                batch_id=batch_id,
+                poll_seconds=elapsed,
+                deployed=False,
+            )
+            return
 
         print("Building eo.json...")
         build_from_summaries()
@@ -107,19 +138,21 @@ class PipelineRunner:
             cwd="web/",
             check=True,
         )
-        deployed = True
 
+        status = "partial_failure" if failed else "success"
         self.db.finish_run(
             run_id,
-            status="success",
+            status=status,
             eos_found=eos_found,
             eos_new=eos_new,
             batch_id=batch_id,
             poll_seconds=elapsed,
-            deployed=deployed,
+            deployed=True,
         )
 
-        print(f"Pipeline complete. {eos_new} EOs processed and deployed.")
+        print(
+            f"Pipeline complete. {len(succeeded)}/{eos_new} EOs processed and deployed."
+        )
 
 
 def main():
