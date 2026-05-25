@@ -1,18 +1,20 @@
 #!/usr/bin/env python3
 import json
-import traceback
 
 import requests
-from config import PDF_DIR
-from federalregister import fetch_all_executive_orders
-from models import President
-from summarize_eo import batch_summarize_with_claude, process_pdf
+from propagate.config import PDF_DIR
+from propagate.federalregister import fetch_all_executive_orders
+from propagate.logging_config import get_logger, setup_logging
+from propagate.models import President
+from propagate.summarize_eo import batch_summarize_with_claude, process_pdf
+
+logger = get_logger(__name__)
 
 
 def print_last_processed(orders):
     processed = [o for o in orders if o.summary_exists()]
     if not processed:
-        print("No previously processed EOs found.")
+        logger.info("No previously processed EOs found.")
         return
 
     last = max(processed, key=lambda o: o.signing_date or "")
@@ -25,17 +27,18 @@ def print_last_processed(orders):
             signing_date = data.get("signing_date", signing_date)
             title = data.get("title", title)
 
-    print(f"\nLast processed EO: {last.executive_order_number}")
-    print(f"  Title: {title}")
-    print(f"  Signed: {signing_date}")
+    logger.info(
+        "Last processed EO: %s - %s (signed %s)",
+        last.executive_order_number, title, signing_date,
+    )
 
 
 def print_pending(orders):
     if not orders:
         return
-    print(f"\nPending EOs ({len(orders)}):")
+    logger.info("Pending EOs (%d)", len(orders))
     for order in sorted(orders, key=lambda o: o.signing_date or ""):
-        print(f"  EO {order.executive_order_number}: {order.title} ({order.signing_date})")
+        logger.info("  EO %s: %s (%s)", order.executive_order_number, order.title, order.signing_date)
 
 
 def fetch_and_process_president(
@@ -43,12 +46,10 @@ def fetch_and_process_president(
 ):
     orders = []
     try:
-        print(
-            f"Starting to fetch and download executive orders for {president.name}..."
-        )
+        logger.info("Starting to fetch and download executive orders for %s", president.name)
         orders = fetch_all_executive_orders(president=president.key, force=force)
     except requests.exceptions.RequestException as e:
-        print(f"Error fetching data: {e}")
+        logger.error("Error fetching data: %s", e)
 
     # Set president information on each order
     for order in orders:
@@ -62,7 +63,7 @@ def fetch_and_process_president(
     print_pending(orders)
 
     if len(orders) == 0:
-        print(f"\nNo orders to process for {president.name}")
+        logger.info("No orders to process for %s", president.name)
         return
 
     # find duplicate orders
@@ -70,7 +71,7 @@ def fetch_and_process_president(
         if order.executive_order_number in [
             o.executive_order_number for o in orders if o != order
         ]:
-            print(f"Duplicate order found: {order.executive_order_number}")
+            logger.error("Duplicate order found: %s", order.executive_order_number)
             # remove the duplicate
             orders.remove(order)
 
@@ -79,19 +80,12 @@ def fetch_and_process_president(
         # For batch mode without force, orders are already filtered
         response, request_ids = batch_summarize_with_claude(orders, president.key)
 
-        print("\n" + "=" * 60)
-        print("BATCH CREATED SUCCESSFULLY")
-        print(f"Batch ID: {response.id}")
-        print(f"President: {president.name}")
-        print(f"Orders: {len(request_ids)}")
-        print("=" * 60)
-        print(
-            f"\nTo check status: python propagate/batch_manager.py status {response.id}"
+        logger.info(
+            "Batch created: id=%s president=%s orders=%d",
+            response.id, president.name, len(request_ids),
         )
-        print(
-            "To process when ready: "
-            f"python propagate/batch_manager.py process {response.id}"
-        )
+        logger.info("Check status: python propagate/batch_manager.py status %s", response.id)
+        logger.info("Process when ready: python propagate/batch_manager.py process %s", response.id)
 
         # append request ids to a file with batch ID as header
         with open(f"request_ids_{president.key}.txt", "a") as f:
@@ -99,23 +93,24 @@ def fetch_and_process_president(
             for request_id in request_ids:
                 f.write(request_id + "\n")
 
-        print(f"\nSaved request ids to request_ids_{president.key}.txt")
+        logger.info("Saved request ids to request_ids_%s.txt", president.key)
         return
 
     try:
         for order in orders:
             process_pdf(order, force=force)
-            print(f"Processed {order.executive_order_number}")
+            logger.info("Processed %s", order.executive_order_number)
     except Exception as e:
-        print(f"Error processing PDF: {e}")
-        traceback.print_exc()
+        logger.error("Error processing PDF", exc_info=True)
 
 
 def main():
     """Main function to fetch and download executive orders."""
     import argparse
 
-    from models import PRESIDENTS
+    setup_logging()
+
+    from propagate.models import PRESIDENTS
 
     # Build list of valid president choices
     president_choices = [p.key for p in PRESIDENTS] + ["all"]

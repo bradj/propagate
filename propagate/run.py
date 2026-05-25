@@ -8,9 +8,12 @@ from propagate.build import build_from_summaries
 from propagate.config import PDF_DIR
 from propagate.db import PropagateDB
 from propagate.federalregister import fetch_all_executive_orders
+from propagate.logging_config import get_logger, setup_logging
 from propagate.models import PRESIDENTS
 from propagate.summarize_eo import batch_summarize_with_claude
 from propagate.util import get_client
+
+logger = get_logger(__name__)
 
 MAX_POLL_SECONDS = 4 * 60 * 60  # 4 hours
 POLL_INTERVAL = 120  # 2 minutes
@@ -29,10 +32,10 @@ class PipelineRunner:
             self._execute(run_id, president)
         except Exception as e:
             self.db.finish_run(run_id, status="failed", error=str(e))
-            print(f"Pipeline failed: {e}")
+            logger.error("Pipeline failed", exc_info=True)
 
     def _execute(self, run_id: int, president):
-        print(f"Fetching executive orders for {president.name}...")
+        logger.info("Fetching executive orders for %s", president.name)
         PDF_DIR.mkdir(parents=True, exist_ok=True)
         orders = fetch_all_executive_orders(president=president.key)
 
@@ -43,7 +46,7 @@ class PipelineRunner:
         new_orders = [o for o in orders if not o.summary_exists()]
         eos_new = len(new_orders)
 
-        print(f"Found {eos_found} EOs, {eos_new} new")
+        logger.info("Found %d EOs, %d new", eos_found, eos_new)
 
         if eos_new == 0:
             self.db.finish_run(
@@ -52,15 +55,15 @@ class PipelineRunner:
                 eos_found=eos_found,
                 eos_new=0,
             )
-            print("No new orders to process")
+            logger.info("No new orders to process")
             return
 
-        print(f"Submitting batch for {eos_new} orders...")
+        logger.info("Submitting batch for %d orders", eos_new)
         response, request_ids = batch_summarize_with_claude(new_orders, president.key)
         batch_id = response.id
-        print(f"Batch submitted: {batch_id}")
+        logger.info("Batch submitted: %s", batch_id)
 
-        print("Polling for batch completion...")
+        logger.info("Polling for batch completion...")
         elapsed = 0
         while True:
             time.sleep(POLL_INTERVAL)
@@ -68,7 +71,7 @@ class PipelineRunner:
 
             batch = get_client().messages.batches.retrieve(batch_id)
             status = batch.processing_status
-            print(f"  [{elapsed}s] Status: {status}")
+            logger.info("Batch poll elapsed=%ds status=%s", elapsed, status)
 
             if status == "ended":
                 break
@@ -78,7 +81,7 @@ class PipelineRunner:
                     f"Batch {batch_id} did not complete within {MAX_POLL_SECONDS}s"
                 )
 
-        print("Processing batch results...")
+        logger.info("Processing batch results...")
         download_and_process_batch(batch_id)
 
         succeeded = []
@@ -102,13 +105,14 @@ class PipelineRunner:
                 )
 
         if failed:
-            print(
-                f"{len(failed)} EOs failed: "
-                f"{', '.join(str(o.executive_order_number) for o in failed)}"
+            logger.error(
+                "%d EOs failed: %s",
+                len(failed),
+                ", ".join(str(o.executive_order_number) for o in failed),
             )
 
         if not succeeded:
-            print("No EOs were successfully processed. Skipping deploy.")
+            logger.error("No EOs were successfully processed. Skipping deploy.")
             self.db.finish_run(
                 run_id,
                 status="failed",
@@ -120,10 +124,10 @@ class PipelineRunner:
             )
             return
 
-        print("Building eo.json...")
+        logger.info("Building eo.json...")
         build_from_summaries()
 
-        print("Deploying...")
+        logger.info("Deploying...")
         subprocess.run(
             ["cp", "eo/eo.json", "web/public/"],
             check=True,
@@ -150,12 +154,11 @@ class PipelineRunner:
             deployed=True,
         )
 
-        print(
-            f"Pipeline complete. {len(succeeded)}/{eos_new} EOs processed and deployed."
-        )
+        logger.info("Pipeline complete: %d/%d EOs processed and deployed", len(succeeded), eos_new)
 
 
 def main():
+    setup_logging()
     runner = PipelineRunner()
     runner.run()
 

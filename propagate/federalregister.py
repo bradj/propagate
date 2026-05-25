@@ -2,8 +2,11 @@ from pathlib import Path
 from typing import List
 
 import requests
-from config import PDF_DIR
-from models import ExecutiveOrder
+from propagate.config import PDF_DIR
+from propagate.logging_config import get_logger
+from propagate.models import ExecutiveOrder
+
+logger = get_logger(__name__)
 
 CHUNK_SIZE = 8192  # Size of chunks when downloading files
 BASE_URL = "https://www.federalregister.gov/api/v1/documents.json"
@@ -87,7 +90,7 @@ def fetch_eo_metadata(
     current_url = BASE_URL
 
     while current_url:
-        print(f"Fetching page {page_number}...")
+        logger.info("Fetching page %d...", page_number)
 
         if page_number == 1:
             response = requests.get(current_url, params=params)
@@ -100,7 +103,7 @@ def fetch_eo_metadata(
         results = data.get("results", [])
         if results:
             orders = [ExecutiveOrder.from_dict(item) for item in results]
-            print(f"  Found {len(orders)} executive orders on page {page_number}")
+            logger.info("Found %d executive orders on page %d", len(orders), page_number)
             all_orders.extend(orders)
 
         next_page_url = data.get("next_page_url")

@@ -48,6 +48,8 @@ def test_new_orders_full_pipeline(
     with tempfile.TemporaryDirectory() as tmp:
         runner = _make_runner(tmp)
         orders = [_mock_order(14405), _mock_order(14406)]
+        for o in orders:
+            o.summary_exists.side_effect = [False, True]
         mock_fetch.return_value = orders
 
         mock_batch_response = MagicMock()

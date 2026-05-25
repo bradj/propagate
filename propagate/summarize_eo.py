@@ -10,16 +10,19 @@ from anthropic.types.message import Message
 from anthropic.types.message_create_params import MessageCreateParamsNonStreaming
 from anthropic.types.messages.batch_create_params import Request
 from anthropic.types.messages.message_batch import MessageBatch
-from config import MAX_TOKENS, MODEL
-from models import ExecutiveOrder, Summary
-from prompts import PROMPT, SYSTEM_PROMPT_EXECUTIVE_ORDER
-from util import (
+from propagate.config import MAX_TOKENS, MODEL
+from propagate.logging_config import get_logger, setup_logging
+from propagate.models import ExecutiveOrder, Summary
+from propagate.prompts import PROMPT, SYSTEM_PROMPT_EXECUTIVE_ORDER
+from propagate.util import (
     claude_json_to_summary,
     fetch_all_executive_orders,
     get_client,
     get_pdf_data,
     save_summary,
 )
+
+logger = get_logger(__name__)
 
 
 def save_claude_json(json_data: dict, json_path: Path) -> Path:
@@ -39,7 +42,7 @@ def create_claude_message(order: ExecutiveOrder) -> Message | None:
     pdf_size = len(pdf_data)
 
     if pdf_size > 33554432:
-        print("PDF size is too large")
+        logger.error("PDF size is too large")
         return None
 
     message: Message | None = None
@@ -67,7 +70,7 @@ def create_claude_message(order: ExecutiveOrder) -> Message | None:
             ],
         )
     except Exception as e:
-        print(f"Error calling Claude API: {e}")
+        logger.error("Error calling Claude API: %s", e)
         sys.exit(1)
 
     return message
@@ -78,7 +81,7 @@ def create_claude_batch_request(order: ExecutiveOrder, uid: str) -> tuple[Reques
     Create a Claude message for a list of executive orders.
     """
 
-    print(f"Creating batch request with uid {uid}")
+    logger.info("Creating batch request with uid %s", uid)
 
     pdf_data = get_pdf_data(order)
 
@@ -134,7 +137,7 @@ def batch_summarize_with_claude(
             requests.append(request)
             request_ids.append(uid)
 
-    print("Creating batch...")
+    logger.info("Creating batch with %d requests", len(requests))
     response = client.messages.batches.create(requests=requests)
     return response, request_ids
 
@@ -152,7 +155,7 @@ def summarize_with_claude(order: ExecutiveOrder) -> Summary | None:
 
     message = create_claude_message(order)
     if message is None:
-        print(f"Error summarizing {order.pdf_path}")
+        logger.error("Error summarizing %s", order.pdf_path)
         return None
 
     summary = message.content[0].text
@@ -169,7 +172,7 @@ def process_pdf(order: ExecutiveOrder, force: bool = False) -> Optional[Summary]
     if summary_path.exists() and not force:
         raise Exception(f"Summary already exists for {order.pdf_path}")
 
-    print(f"Processing {order.pdf_path}...")
+    logger.info("Processing %s...", order.pdf_path)
 
     # Summarize with Claude using the PDF file directly
     summary_data = summarize_with_claude(order)
@@ -178,17 +181,19 @@ def process_pdf(order: ExecutiveOrder, force: bool = False) -> Optional[Summary]
 
     summary = claude_json_to_summary(summary_data, order)
 
-    print(f"President: {summary.president}")
+    logger.info("President: %s", summary.president)
 
     # Save summary
     saved_path = save_summary(summary, summary_path)
-    print(f"  Summary saved to {saved_path}")
+    logger.info("Summary saved to %s", saved_path)
 
     return summary
 
 
 def main():
     """Summarizes the EO based on the executive order number"""
+    setup_logging()
+
     if len(sys.argv) != 2:
         print("Usage: python summarize_eo.py <eo_number>")
         sys.exit(1)
@@ -201,7 +206,7 @@ def main():
             process_pdf(order, force=True)
             break
 
-    print(f"Summarized {eo_number}")
+    logger.info("Summarized %d", eo_number)
 
 
 if __name__ == "__main__":
