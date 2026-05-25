@@ -82,4 +82,4 @@ fmt:
 
 .PHONY: claude
 claude:
-	claude --setting-sources project,local --model claude-opus-4-6
+	claude --setting-sources project,local --model claude-opus-4-6 --permission-mode plan
