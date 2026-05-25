@@ -1,29 +1,25 @@
 #!/usr/bin/env python3
-"""
-Manage Claude batch requests - list, check status, and process results.
-"""
 
 import argparse
 import os
 from pathlib import Path
 
 import requests
-from build import build_from_claude_batch
-from util import get_client
+from propagate.build import build_from_claude_batch
+from propagate.logging_config import get_logger, setup_logging
+from propagate.util import get_client
+
+logger = get_logger(__name__)
 
 
 def list_batches(limit: int = 20):
     """List recent batches from Anthropic API."""
     client = get_client()
 
-    # Get recent batches
     response = client.messages.batches.list(limit=limit)
 
-    print(f"Recent batches (showing up to {limit}):\n")
+    logger.info("Recent batches (showing up to %d)", limit)
     for batch in response.data:
-        print(f"Batch ID: {batch.id}")
-        print(f"  Status: {batch.processing_status}")
-        print(f"  Created: {batch.created_at}")
         total = (
             batch.request_counts.processing
             + batch.request_counts.succeeded
@@ -31,14 +27,15 @@ def list_batches(limit: int = 20):
             + batch.request_counts.canceled
             + batch.request_counts.expired
         )
-        print(f"  Total requests: {total}")
-        print(f"    Processing: {batch.request_counts.processing}")
-        print(f"    Succeeded: {batch.request_counts.succeeded}")
+        logger.info(
+            "Batch %s status=%s created=%s total=%d succeeded=%d processing=%d",
+            batch.id, batch.processing_status, batch.created_at,
+            total, batch.request_counts.succeeded, batch.request_counts.processing,
+        )
         if batch.request_counts.errored > 0:
-            print(f"    Errored: {batch.request_counts.errored}")
+            logger.error("Batch %s errored=%d", batch.id, batch.request_counts.errored)
         if hasattr(batch, "results_url") and batch.results_url:
-            print("  Results: Available for download")
-        print()
+            logger.info("Batch %s results available for download", batch.id)
 
 
 def get_batch_status(batch_id: str):
@@ -47,9 +44,6 @@ def get_batch_status(batch_id: str):
 
     try:
         batch = client.messages.batches.retrieve(batch_id)
-        print(f"Batch ID: {batch.id}")
-        print(f"Status: {batch.processing_status}")
-        print(f"Created: {batch.created_at}")
         total = (
             batch.request_counts.processing
             + batch.request_counts.succeeded
@@ -57,19 +51,21 @@ def get_batch_status(batch_id: str):
             + batch.request_counts.canceled
             + batch.request_counts.expired
         )
-        print(f"Total requests: {total}")
-        print(f"  Processing: {batch.request_counts.processing}")
-        print(f"  Succeeded: {batch.request_counts.succeeded}")
+        logger.info(
+            "Batch %s status=%s created=%s total=%d succeeded=%d processing=%d",
+            batch.id, batch.processing_status, batch.created_at,
+            total, batch.request_counts.succeeded, batch.request_counts.processing,
+        )
         if batch.request_counts.errored > 0:
-            print(f"  Errored: {batch.request_counts.errored}")
+            logger.error("Batch %s errored=%d", batch.id, batch.request_counts.errored)
         if batch.request_counts.canceled > 0:
-            print(f"  Canceled: {batch.request_counts.canceled}")
+            logger.info("Batch %s canceled=%d", batch.id, batch.request_counts.canceled)
         if batch.request_counts.expired > 0:
-            print(f"  Expired: {batch.request_counts.expired}")
+            logger.info("Batch %s expired=%d", batch.id, batch.request_counts.expired)
         if hasattr(batch, "results_url") and batch.results_url:
-            print(f"Results URL: {batch.results_url}")
+            logger.info("Batch %s results_url=%s", batch.id, batch.results_url)
     except Exception as e:
-        print(f"Error retrieving batch: {e}")
+        logger.error("Error retrieving batch: %s", e)
 
 
 def download_and_process_batch(batch_id: str):
@@ -80,24 +76,22 @@ def download_and_process_batch(batch_id: str):
     try:
         batch = client.messages.batches.retrieve(batch_id)
     except Exception as e:
-        print(f"Error retrieving batch: {e}")
+        logger.error("Error retrieving batch %s: %s", batch_id, e)
         return
 
     if batch.processing_status != "ended":
-        print(f"Batch is not complete. Status: {batch.processing_status}")
+        logger.error("Batch is not complete. Status: %s", batch.processing_status)
         return
 
     if not hasattr(batch, "results_url") or not batch.results_url:
-        print("No results URL available for this batch")
+        logger.error("No results URL available for batch %s", batch_id)
         return
 
-    # Download results
     output_dir = Path("batch_results")
     output_dir.mkdir(exist_ok=True)
     output_file = output_dir / f"batch_{batch_id}.jsonl"
 
-    print("Downloading batch results...")
-    # add PROPAGATE_ANTHROPIC_API_KEY to x-api-key header
+    logger.info("Downloading batch results...")
     response = requests.get(
         batch.results_url,
         headers={
@@ -110,15 +104,15 @@ def download_and_process_batch(batch_id: str):
     with open(output_file, "wb") as f:
         f.write(response.content)
 
-    print(f"Downloaded to {output_file}")
+    logger.info("Downloaded to %s", output_file)
 
-    # Process the results
-    print("\nProcessing batch results...")
+    logger.info("Processing batch results...")
     build_from_claude_batch(output_file)
-    print("Batch processing complete!")
+    logger.info("Batch processing complete")
 
 
 def main():
+    setup_logging()
     parser = argparse.ArgumentParser(description="Manage Claude batch requests")
     subparsers = parser.add_subparsers(dest="command", help="Commands")
 

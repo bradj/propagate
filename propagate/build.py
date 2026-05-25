@@ -4,11 +4,14 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-from federalregister import fetch_eo_metadata
-from util import (
+from propagate.federalregister import fetch_eo_metadata
+from propagate.logging_config import get_logger
+from propagate.util import (
     claude_json_to_summary,
     save_summary,
 )
+
+logger = get_logger(__name__)
 
 
 class DateTimeEncoder(json.JSONEncoder):
@@ -37,7 +40,7 @@ def build_from_claude_batch(jsonl_path: Path):
             eo_number = int(parts[-2])
             result = entry["result"]
             if result["type"] != "succeeded":
-                print(f"Skipping {eo_number}: {result['type']} - {result['error']}")
+                logger.error("Skipping %d: %s - %s", eo_number, result["type"], result.get("error", ""))
                 continue
 
             text = result["message"]["content"][0]["text"]
@@ -45,7 +48,7 @@ def build_from_claude_batch(jsonl_path: Path):
             try:
                 claude_json = json.loads(text)
             except Exception as ex:
-                print(f"{eo_number}: {ex}")
+                logger.error("%d: %s", eo_number, ex)
                 continue
 
             # write to a file in the summaries directory
@@ -62,7 +65,7 @@ def build_from_claude_batch(jsonl_path: Path):
 
             # Save summary
             saved_path = save_summary(summary, summary_path)
-            print(f"Summary saved to {saved_path}")
+            logger.info("Summary saved to %s", saved_path)
 
 
 def build_from_summaries():
@@ -133,6 +136,6 @@ if __name__ == "__main__":
         if p.exists():
             build_from_claude_batch(p)
         else:
-            print(f"File {p} does not exist")
+            logger.error("File %s does not exist", p)
 
     build_from_summaries()

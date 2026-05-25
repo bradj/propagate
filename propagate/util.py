@@ -4,9 +4,12 @@ import sys
 from pathlib import Path
 
 import anthropic
-from config import CLAUDE_API_KEY
-from federalregister import fetch_all_executive_orders
-from models import Categories, ExecutiveOrder, Summary
+from propagate.config import CLAUDE_API_KEY
+from propagate.federalregister import fetch_all_executive_orders
+from propagate.logging_config import get_logger
+from propagate.models import Categories, ExecutiveOrder, Summary
+
+logger = get_logger(__name__)
 
 client: anthropic.Anthropic | None = None
 
@@ -15,9 +18,9 @@ def get_client():
     global client
 
     if not CLAUDE_API_KEY:
-        print(
+        logger.error(
             "Claude API key is required."
-            " Set the ANTHROPIC_API_KEY environment variable."
+            " Set the PROPAGATE_ANTHROPIC_API_KEY environment variable."
         )
         sys.exit(1)
 

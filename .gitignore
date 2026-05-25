@@ -14,3 +14,4 @@ batch_results/
 request_ids_*.txt
 eo.json
 propagate.db
+propagate.log
